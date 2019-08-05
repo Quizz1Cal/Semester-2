@@ -522,6 +522,8 @@ Directory structure:
 Common: `max`, `even`, `min`, `length`, `null` (checks if list empty), `!!` (indexing), `++` (infix list concat.)
 - Fun fact: `!!`, `length` run in linear time due to Haskell NOT having random access
 
+Note: `++` is inefficient if the list on the left is long, so try and use `foldr` on lists where possible.
+
 Prelude slicing: 
 - `head (x:xs)` gets x, `tail` gets xs
 - `last (..x)` gets last elem, `init` gets prefix list

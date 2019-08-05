@@ -20,18 +20,18 @@
 
 -- Note the variable is a type constructor and NOT a concrete Type
 class Functor f where
-    fmap :: (a -> b) -> f a -> f b
+  fmap :: (a -> b) -> f a -> f b
 
 instance Functor [] where
-    fmap = map 
+  fmap = map 
 
 instance Functor Maybe where
-    fmap f (Just x) = Just (f x)
-    fmap f Nothing = Nothing
+  fmap f (Just x) = Just (f x)
+  fmap f Nothing = Nothing
 
 -- Functions are also functors, as they 'contain' their result. The application operator ((->) r)
 instance Functor ((->) r) where  
-    fmap = (.)  
+  fmap = (.)  
 ```
 
 ### Functor Laws
@@ -51,32 +51,32 @@ Applicative functors are a subclass of Functors that facilitate the ability to a
 ### Examples
 ```Haskell
 class (Functor f) => Applicative f where  
-    pure :: a -> f a  -- How to wrap an expression into a functor
-    (<*>) :: f (a -> b) -> f a -> f b   -- How to apply a functor operation to a functor
+  pure :: a -> f a  -- How to wrap an expression into a functor
+  (<*>) :: f (a -> b) -> f a -> f b   -- How to apply a functor operation to a functor
 
 -- Adding a member
 instance Applicative Maybe where
-    pure = Just
-    Nothing <*> _ = Nothing
-    (Just f) <*> x = fmap f x
+  pure = Just
+  Nothing <*> _ = Nothing
+  (Just f) <*> x = fmap f x
 
 -- For lists
 instance Applicative [] where  
-    pure x = [x]  
-    fs <*> xs = [f x | f <- fs, x <- xs]   -- Cartesian product as sizes could  unequal
+  pure x = [x]  
+  fs <*> xs = [f x | f <- fs, x <- xs]   -- Cartesian product as sizes could be unequal
 
 -- for IO
 instance Applicative IO where
-    pure = return
-    a <*> b = do
-        f <- a   -- (unpack fxn in a)
-        x <- b   -- (unpack data in b)
-        return (f x) -- (repack post-map)
+  pure = return
+  a <*> b = do
+    f <- a   -- (unpack fxn in a)
+    x <- b   -- (unpack data in b)
+    return (f x) -- (repack post-map)
 
 -- ((->) r) (function application)
 instance Applicative ((->) r) where
-    pure x  = (\_ -> x)  -- A pure function is the 'constant'
-    f <*> g = \x -> f x (g x) -- 
+  pure x  = (\_ -> x)  -- A pure function is the 'constant'
+  f <*> g = \x -> f x (g x) -- 
 
 -- Infix equivalent for fmap in the same module
 (<$>) :: (Functor f) => (a -> b) -> f a -> f b  
@@ -113,15 +113,15 @@ Examples:
 
 -- class definition. Note m is a concrete type
 class Monoid m where
-    mempty :: m     -- a polymorphic constant representing the identity value
-    mappend :: m -> m -> m      -- the binary function 
-    mconcat :: [m] -> m     -- Reduces a list of monoid vals, default impxn.
-    mconcat = foldr mappend mempty          -- Can be overriden if needed
+  mempty :: m     -- a polymorphic constant representing the identity value
+  mappend :: m -> m -> m      -- the binary function 
+  mconcat :: [m] -> m     -- Reduces a list of monoid vals, default impxn.
+  mconcat = foldr mappend mempty          -- Can be overriden if needed
 
 -- lists (work for any a). Note [] below wouldn't work, since that's not a type.
 instance Monoid [a] where
-    mempty = []
-    mappend = (++)
+  mempty = []
+  mappend = (++)
 ```
 
 Where one type has monoidic properties with many functions, `newtype` is used to create wrapper types, and then those wrapper types are made Monoids
@@ -161,10 +161,10 @@ Examples:
    The actual monoid and tree data is irrelevant - this only describes HOW to handle folding the tree, not the actual monoid operations.
 -}
 instance F.Foldable Tree where
-    foldMap f Empty = mempty
-    foldMap f (Node x l r) = F.foldMap f l `mappend`
-                             f x           `mappend`
-                             F.foldMap f r
+  foldMap f Empty = mempty
+  foldMap f (Node x l r) = F.foldMap f l `mappend`
+                           f x           `mappend`
+                           F.foldMap f r
 
 {- Excellent boolean test. Note the need to use Any/All because Bool is not a monoid due to having two a. b. functions -}
 getAny $ F.foldMap (\x -> Any $ x == 3) testTree
@@ -184,6 +184,7 @@ For review/comparison:
 <$> : Applies std functions to wrapped data
 <*> : Applies wrapped (std function) to wrapped data
 >>= : Applies wrapping function to wrapped data
+=<< : (think `flip (>>=)`) Takes wrapped data and applies wrapping function
 >>  : Forces right to be output, unless >>= says otherwise (e.g. Nothing >> Just 3 yields Nothing and not Just 3)
 }
 
@@ -203,23 +204,72 @@ Examples
    Note the absence of the typeclass constraint; but it is still true that Monads are Applicative Functors.
 -}
 class Monad m where
-    return :: a -> m a      -- IDENTICAL purpose to pure
-    (>>=) :: m a -> (a -> m b) -> m b       -- Bind
-    (>>) :: m a -> m b -> m b
-    x >> y = x >>= \_ -> y
-    fail :: String -> m a
-    fail msg = error msg
+  return :: a -> m a      -- IDENTICAL purpose to pure
+  (>>=) :: m a -> (a -> m b) -> m b       -- Bind
+  (>>) :: m a -> m b -> m b
+  x >> y = x >>= \_ -> y
+  fail :: String -> m a
+  fail msg = error msg
 
 -- Maybe
 instance Monad Maybe where
-    return x = Just x
-    Nothing >>= f = Nothing
-    Just x >>= f = f x     -- Remember the function outputs a Maybe
-    fail _ = Nothing
+  return x = Just x
+  Nothing >>= f = Nothing
+  Just x >>= f = f x     -- Remember the function outputs a Maybe
+  fail _ = Nothing
+
+-- Lists (and equivalent statements)
+[1,2] >>= \n -> ['a', 'b'] >>= \ch -> return (n,ch)
+[1,2] >>= (\n -> ['a', 'b'] >>= (\ch -> return (n, ch)))
+[(n,ch) | n <- [1, 2], ch <- ['a', b']]
+do 
+  n <- [1,2]
+  ch <- ['a', 'b']
+  return (n,ch)
 ```
 
 Benefits:
 - Bind allows extraction of underlying data without pattern matching (instantiation defines how to get it) whilst 'automagically' understanding the context, potential failures (like a 'Nothing') etc.
+
+### Monadic Composition
+
+The composition operator(s) (`Control.Monad`) are defined as
+```Haskell
+(<=<) :: (Monad m) => (b -> m c) -> (a -> m b) -> (a -> m c)  
+f <=< g = (\x -> g x >>= f)
+
+-- Informally: (>=>) = flip <=<.
+```
+
+Note that, if you use composition/bind operators pointing in the same 
+direction, you read and apply the stream linearly (see below).
+
+```Haskell
+-- Example
+pred2 = \x -> Just . pred . pred $ x
+negater = \y -> Just $ -y
+
+(pred2 <=< negater) =<< Just 5   -- Just (-7). Read right-left
+Just 5 >>= (negater >=> pred2)   -- Just (-7). In order of application!
+pred . pred . negate $ 5         -- (-7)
+
+(negater <=< pred2) =<< Just 5   -- Just (-3)
+negate . pred . pred $ 5         -- (-3)
+```
+
+### Monad Laws
+
+1. Left Identity: `return x >>= f` is equivalent to `f x` (i.e. the process of packing, then unpacking shouldn't mutate the data)
+    - Therefore writing a `return <midresult>` mid-computation is fine since the `<midresult>` will still pass through it.
+2. Right Identity: `m >>= return` is equivalent to `m` (i.e. the process of unpacking then packing shouldn't mutate the data)
+3. Associativity: `(m >>= f) >>= g` is equivalent to `m >>= (\x -> f x >>= g)`
+    - Based off understanding that `m@(<context> x) >>= f = f x`
+    Note: does not conflict with list comprehensions since `g` is not independent of `x` there
+
+Re-expressed with composition operators:
+1. `f <=< return` is equal to `f` (wraps, dewraps, then applies `f`)
+2. `return <=< f` is equal to `f` (applies `f`, dewraps then wraps)
+3. `f <=< (g <=< h)` is equal to `(f <=< g) <=< h`
 
 ### Do Notation for Monads
 
@@ -237,10 +287,10 @@ foo = Just 3 >>= (\x ->
 foo2 :: Maybe String
 foo2 = do
     x <- Just 3
-    Nothing  -- Equivalent of _ <- Nothing, which really embodies a >>
     y <- Just "!"
     Just (show x ++ y)
 ```
+> Note: writing `Nothing` or `_ <- Nothing` in `foo2` would equal a `>> Nothing` in `foo`
 
 So effectively `x <- Just 3` means `Just 3 >>= (<a function> \x -> <next line>)` (i.e. the `Just 3` is bound to the 'x' used in the rest of the computation, hence the name)
 - Each line's RHS is the argument piped into the inner functions represented in the next line. Therefore the last line must be an expression as the output of the innermost lambda!
@@ -251,5 +301,181 @@ Pattern matching is certainly possible as the LHS **is the argument** to the nex
 
 The **error** function exists to handle what to do in a pipe scenario when the pattern match fails in a **do**. The error allows for contextual messaging, or just a default value based on the context.
 
-TODO: Try and do dos with the Juggler. Remember, write as a sequence FIRST, then convert.
+### MonadPlus and Monadic Filtering
 
+Located in `Control.Monad.Plus`, MonadPlus is a class for monads that also act as monoids. 
+
+```Haskell
+class Monad m => MonadPlus m where
+  mzero :: m a                   -- synonym for mempty
+  mplus :: m a -> m a -> m a     -- synonym for mappend
+
+-- List example
+instance MonadPlus [] where
+  mzero = []
+  mplus = (++)
+```
+
+Using the function `guard :: (MonadPlus m) => Bool -> m ()`, we can add filters to `do` sequences for more than just lists.
+- E.g. `guard (5 > 2) :: Maybe ()` outputs `Just ()`
+- E.g. `guard (False) :: Maybe ()` gives `Nothing`. 
+- In a chain of `>>=`, the former along with `>>` is an identity (effectively), the latter a nullification
+    - E.g. `guard (True) >> return "cool" :: [String]`
+    - All it requires is that `()` can be placed into the monad's context
+
+```Haskell
+gchi > guard (True) >> return "cool" :: [String]   -- Or even Maybe String
+["cool"]
+```
+
+To filter with `guard` in a do, simple write `guard (<some test>)` as one of the lines
+
+### Built-In Monadic Types
+
+#### Reader i.e. Why Monads > Applicatives
+
+```Haskell
+
+-- Functions are Monads
+-- Note: the f below is type a -> b -> r (takes in output of first func and input f first func)
+instance Monad ((->) r) where  
+    return x = \_ -> x  
+    h >>= f = \w -> f (h w) w   -- Gets the x-value 'w', gets h w, applies f to everything
+
+-- The beauty of functions being monads
+addStuff :: Int -> Int  
+addStuff = do  
+    a <- (*2)  
+    b <- (+10)  
+    return (a+b)  -- You pretend you already know the values of a and b
+
+-- addStuff 3 is 19
+-- So is (+) <$> (*2) <*> (+10) $ 3
+```
+
+#### Writer
+
+The `writer` monad captures a value and some associated monoid in a tuple `(<value>, <monoid log>)`. An `>>= f` operand will apply `f` to the value, but also call `mappend` to fold the prior log and log of `f <value>`. So the side effect here is the folding of the Monoidic value. 
+
+```Haskell
+newtype Writer w a = Writer { runWriter :: (a, w) }
+
+-- Instantiation
+instance (Monoid w) => Monad (Writer w) where  
+    return x = Writer (x, mempty)  
+    (Writer (x,v)) >>= f = let (Writer (y, v')) = f x in Writer (y, v `mappend` v')
+```
+
+Examples:
+```
+-- Using to track use of numbers
+logNumber :: Int -> Writer [String] Int  
+logNumber x = Writer (x, ["Got number: " ++ show x])  
+multWithLog :: Writer [String] Int  
+multWithLog = do  
+    a <- logNumber 3        -- The 'context' is (Writer w), even though 'runWriter' does otherwise
+    b <- logNumber 5  
+    return (a*b)  
+
+-- Call
+ghci> runWriter multWithLog  
+(15,["Got number: 3","Got number: 5"])  
+```  
+
+The `tell` function returns a dummy a value, but `mappend` the argument to the log - basically a `return` with side effect.
+
+Thus to add logging to programs is easy: just wrap outputs in a `do`, use `tell` to indicate the output, and use `return <intention>`. Then to unpack it, use `mapM_ putStrLn $ snd` on the final output for pretty print.
+
+
+### State Monad
+
+Found in `Control.Monad.State`, defines a State, which implicitly stores a value and some state. Stateful computations (functions that, given a state, compute a value and a new state) are the functions that interact with bind.
+
+**TIP**: A state s a is better thought of as a 'unevaluated state' than an actual state object. Will it be a state? Yes. But have you applied the prior state yet? No.
+
+```Haskell
+newtype State s a = State { runState :: s -> (a,s) }  
+
+instance Monad (State s) where  
+  return x = State $ \s -> (x,s)  
+  (State h) >>= f = State $ \s -> let (a, newState) = h s  
+                                      (State g) = f a  
+                                  in  g newState 
+
+Idea:  
+___________________________________
+| (input) >[H]> (a) >F> ([G])     |
+|             > (state) ----->[G]>| 
+
+Brackets: inputs/outputs
+[]: A state's function
+{}: The function being bound: given a value, creates THE desired state function.
+```
+
+Example use:
+```Haskell
+-- Implementing a Stack. Note that pop/push are 'constants' in the foreground but (in the side-effect world) they are actually implicit functions that return a stack.
+
+-- Pop does nothing in foreground, so it's a constant Stack by our viewpoint. If it returned it's popped value, then it would be differently implemented.
+pop :: State Stack Int  
+pop = State $ \(x:xs) -> (x,xs)  
+  
+push :: Int -> State Stack ()  
+push a = State $ \xs -> ((),a:xs) 
+
+-- Will perform these actions when given a Stack. For now, just a complex composition.
+stackManip = do
+    push 3
+    a <- pop
+    pop
+```
+
+The return is a functional constant of sorts - it will pass the `x` (as you'd expect) with the minimum context (whatever state you pass, since you don't interact with it here). 
+
+The **MonadState** typeclass (`Control.Monad.State`) also provides the below:
+
+```Haskell
+get = State $ \s -> (s,s)
+put newState = State $ \s -> ((), newState)
+```
+
+which allows fetching and overriding of the states as such:
+```Haskell
+stackyStack = do  
+    stackNow <- get  
+    if stackNow == [1,2,3]  
+        then put [8,3,1]  
+        else put [9,2,1]  
+```
+
+#### Randomness (System.Random)
+
+Typeclasses:
+- `RandomGen` for sources of randomness
+- `Random` for things that can take random values
+
+Types:
+- `StdGen` is a `RandomGen` output of `mkStdGen`
+
+Functions:
+- `random :: (RandomGen g, Random a) => g -> (a, g)` takes a random generator, outputs a tuple of a random value and a new generator (for randomness)
+> This is a stateful computation
+- `randoms` is an infinite sequence application of `random` to a generator; it does not return a new generator
+- `mkStdGen Int` is a 'hash', takes in a seed and outputs a `StdGen` (a random generator). Be careful to ensure when used that the output type is annotated.
+- `getStdGen` is an IO action, asking the SYSTEM for a seed and returns an IO (global generator) which you bind for use
+- Can use `newStdGen` to get a new one (also will change `getStdGen`'s output again)
+
+Monad application:
+
+```Haskell
+randomSt :: (RandomGen g, Random a) => State g a  
+randomSt = State random   -- random is the perfect function!
+
+-- Coin tossing. Remember the type declaration is key - it casts the random number.
+threeCoins :: State StdGen (Bool,Bool,Bool)  
+threeCoins = do  
+    a <- randomSt  
+    b <- randomSt  
+    c <- randomSt  
+    return (a,b,c)  
+```

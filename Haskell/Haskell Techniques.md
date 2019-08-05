@@ -74,23 +74,6 @@ OR
 
 ## Emulating Imperative Ideas
 
-### Randomness (System.Random)
-
-Typeclasses:
-- `RandomGen` for sources of randomness
-- `Random` for things that can take random values
-
-Types:
-- `StdGen` is a `RandomGen` output of `mkStdGen`
-
-Functions:
-- `random` Takes a random generator, outputs a tuple of a random value and a new generator (for randomness)
-- `randoms` is an infinite sequence application of `random` to a generator; it does not return a new generator
-- `mkStdGen Int` is a 'hash', takes in a seed and outputs a `StdGen` (a generator). Be careful to ensure when used that the output type is annotated.
-- `getStdGen` is an IO action, asking the SYSTEM for a seed and returns an IO (global generator) which you bind for use
-- Can use `newStdGen` to get a new one (also will change `getStdGen`'s output again)
-
-
 ### Statement Blocks
 
 IDEA: Let many lets feed into each other. It 'feels' like imperative code but it's a complete expression.

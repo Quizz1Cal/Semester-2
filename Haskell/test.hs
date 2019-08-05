@@ -1,6 +1,7 @@
 type Bird = Integer
 type Birds = (Bird, Bird)
 data Juggler a = Juggle a | Fallen
+    deriving (Eq, Show)
 
 instance Functor Juggler where
     fmap f Fallen = Fallen
@@ -23,7 +24,7 @@ addBirds (a,b) (x,y)
     | a+x-b-y > 3 || a+x-b-y < -3 = Fallen
     | otherwise    = pure (a+x, b+y)
 
-factorial :: Int -> Int
-factorial n
-    | n <= 1 = 1
-    | otherwise = n * factorial (n-1)
+tryanddo = do
+    x <- Juggle (0,0) -- Effectively the (0,0) is unpacked
+    y <- addBirds x (0,1)
+    addBirds y (1,1)

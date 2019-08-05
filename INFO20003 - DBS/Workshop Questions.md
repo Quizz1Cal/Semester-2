@@ -42,4 +42,6 @@ SCREEN-PROJECTOR RELATIONSHIP
 CINEMA-MOVIE RELATIONSHIP
 - Each cinema has many movies, but these are shown many places (many:many)
 
-How to link movies to cinemas?
+How to link movies to cinemas? LATER
+
+What we call 'business rules' for now means 'n:m' type relationships.
