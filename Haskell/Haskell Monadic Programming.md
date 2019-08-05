@@ -430,6 +430,21 @@ stackManip = do
     pop
 ```
 
+State Monad Notes:
+- Functions of form `val -> s -> (val,s)` are perfect for composition
+- A state is a FUNCTION. Yes it's an 'object' but that is hard to interpret.
+> If you have a `(State s a)`, you have a state generator.
+
+> If you have an `a` you have an underlying data field
+
+> If you have an `s` you have an underlying state.
+
+> If you have an `a -> (State s a)` you have a state-based computation (`>>=`) 
+
+Common State functions:
+- `runState :: State s a -> s -> (a, s)` extracts the function from a State object
+- `return :: a -> (s -> (s, a))` converts a raw data into a State object
+
 The return is a functional constant of sorts - it will pass the `x` (as you'd expect) with the minimum context (whatever state you pass, since you don't interact with it here). 
 
 The **MonadState** typeclass (`Control.Monad.State`) also provides the below:
