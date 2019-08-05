@@ -2,6 +2,52 @@
 
 ### Author: Callum H
 
+I acknowledge "Learn You a Haskell for Great Good!" notes by Miran Lipovaca [located here](http://learnyouahaskell.com/) and the StackOverflow community for their glorious contributions and some exemplar code.
+
+## Contents
+
+  * [Features of Haskell](#features-of-haskell)
+    + [Expression Evaluation](#expression-evaluation)
+  * [Core Syntax](#core-syntax)
+    + [Common Operators](#common-operators)
+    + [Code Grouping (+ Offside Rule)](#code-grouping----offside-rule-)
+    + [Functions](#functions)
+      - [Pattern Matching](#pattern-matching)
+      - [Currying](#currying)
+      - [Partial Applications](#partial-applications)
+      - [Anonymous/Lambda Functions](#anonymous-lambda-functions)
+      - [Composition](#composition)
+      - [Pointfree Style](#pointfree-style)
+    + [Expression Control Structures](#expression-control-structures)
+      - [If-then-else == Ternary operation](#if-then-else----ternary-operation)
+      - [Do (see Monadic Programming)](#do--see-monadic-programming-)
+      - [Guards (the true conditional control)](#guards--the-true-conditional-control-)
+      - [Case](#case)
+    + [Bindings](#bindings)
+      - [Let](#let)
+      - [Where](#where)
+    + [Types](#types)
+      - [Concrete Types](#concrete-types)
+        * [Lists](#lists)
+      - [Casting](#casting)
+      - [Typeclasses](#typeclasses)
+        * [Defining Classes & Instances](#defining-classes---instances)
+      - [Type Synonym](#type-synonym)
+      - [Data Constructors](#data-constructors)
+        * [Record Syntax](#record-syntax)
+      - [Newtype](#newtype)
+    + [Comprehensions](#comprehensions)
+    + [Laziness](#laziness)
+    + [Modules](#modules)
+      - [DIY Modules](#diy-modules)
+  * [Modules Guide](#modules-guide)
+    + [Prelude](#prelude)
+    + [Data.List](#datalist)
+    + [GHC](#ghc)
+- [Questions](#questions)
+
+<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
+
 ## Features of Haskell
 - Pure: No state, no side-effects, transparent building blocks
 - Define functions with expressions
@@ -14,15 +60,7 @@
 > Type errors don't happen e.g. wrong deferencing
 > Types are checked/determined at compilation
 
-### Expression Evaluation
-
-This loop is the rough basis:
-> Look for a function call in expression
-> Search equations/patterns for this from top down for a match
-> Set values to corr. parts of actual arguments
-> Replace the function call in expression, with the RHS
-
-## Core Syntax
+## Basics
 
 ### Common Operators 
 
@@ -43,6 +81,14 @@ To negate numbers, must do as (-number) with brackets as functions have higher p
 Relational operators: `<,<=,>,>=,/=,==`
 
 Logical operators: `&&, ||, not`
+
+### Expression Evaluation
+
+This loop is the rough basis:
+> Look for a function call in expression
+> Search equations/patterns for this from top down for a match
+> Set values to corr. parts of actual arguments
+> Replace the function call in expression, with the RHS
 
 ### Code Grouping (+ Offside Rule)
 
@@ -65,23 +111,23 @@ let { x = ...
 in ...
 ```
 
-### Functions
+## Functions
 
-All functions in Haskell take one input and emit one output; anything higher order than this is a curried function.
+All functions in Haskell take one input and emit one output; anything higher order than this is a **curried function**.
 
-Note that function type signatures are not mandatory but conventional for ease of reading/reference.
+Note that function type signatures are not mandatory code but conventional for ease of reading/reference.
 
 Cases for function input are possible with:
 - Pattern-matching
 - Guards
 - Case
 
-Function definitions are a list of exhaustive patterns/equations for input, of form `<name> <args..?> ... `
+Function definitions are a list of exhaustive patterns/equations for input, of form `<name> <args..?> = <code>`
 - **Exclusivity**: At most one pattern can apply for any possible call. A desirable quality
 - Functions *can be defined inside other functions*
 - Note that functions can be defined whilst backticked, however this does not make them infix functions (that's far beyond scope of course)
 
-#### Pattern Matching
+### Pattern Matching
 
 The below is analogous to a switch-case. 
 
@@ -96,17 +142,17 @@ More complicated patterns:
 - **Wildcard**: Use of `_` e.g. in `head (x:_) = x`
 - Use of `(x,y)`, `x:y:z:[]` or `[x,y,z]`, `x:y:zs` and matching for data constructors is also possible
 
-#### Currying
+### Currying
 
-E.g. `Int -> (Int -> Int)`
-- Curried Functions are of this form. Note the **functional argument**.
+E.g. `Int -> (Int -> Int)`, `a -> (b -> (c -> d))`
+- Curried Functions are of this form. Note the **functional a:rgument**.
 - In this context, the brackets are removable as the final output is `Int`
 - Uncurried would be `(Int, Int) -> Int`
 - Can convert with `curry` and `uncurry` builtins
 
-#### Partial Applications
+### Partial Applications
 
-It can only occur in-order, sequentially. Given this, the idea is `f x` where f takes more arguments. This can then be fed the remaining arguments subsequently.
+Arguments can only be given and applied to any function occur in-order, sequentially (at least, not without `flip` etc.). However, not all arguments need providing simultaneously - i.e. `f x` where f takes more arguments than just one. This can then be fed the remaining arguments subsequently in later lines.
 
 Functions that are partially applied are 'really' of type `f :: i1 -> ((i2, ...., in) -> rt)`.
 
@@ -117,24 +163,24 @@ Due to currying, partial application is *always* possible, even with mapping
 - E.g. `(map (*3) (x:xs)` or `map (5 'mod') (x:xs)`)
 - For subtraction do `(subtract 4)` or `(+(-4))`
 
-Application operator:
+**Application operator**:
 - $ for function application e.g. `fxn (1+1)` is equivalent to `fxn $ 1 + 1` 
 - Also functionalises application or 'apply to arg' - e.g. allows  `map ($3) [succ, pred]`
 
-#### Anonymous/Lambda Functions
+### Anonymous/Lambda Functions
 
 As simple as `\x -> x+1` or `\s u -> s+u` Note the `\x` is the "lambda calculus" notation, the x is one input.
 - This is a FUNCTION, not an expression.
 - Naming can be done like any other function as `addOne = \x -> x+1`
-- **WARNING**: Check you have no infix/prelude options, before coding a lambda
+- **TIP**: Check you have no infix/prelude options, before coding a lambda
 
-#### Composition
+### Composition
 
 Use the `.` as such: `(f . g) x == f (g x)`
 - Possible with partial application e.g. `sum . replicate 5 . max 6 $ 7`
-- Last value must have an explicit function application
+- Last value must have an explicit function application (with brackets or with `$`)
 
-#### Pointfree Style
+### Pointfree Style
 
 Idea: reduce the number of explicit arguments through function application and composition
 - E.g. convert `fn x = tan (max 50 (cos x))` to `fn = tan . max 50 . cos`
@@ -142,23 +188,25 @@ Idea: reduce the number of explicit arguments through function application and c
 
 The opposite of this style would be binding-heavy, utilising `let`/`where` to break down problems.
 
-### Expression Control Structures
+## Expression Control Structures
 
-#### If-then-else == Ternary operation
+### If-then-else == Ternary operation
 
-`if e1 then e2 else e3` is the standard expression (e1 is Bool). Effectively equivalent to
+`if e1 then e2 else e3` is the standard expression (e1 is Bool). Effectively equivalent to (if you were looking for an alternate)
 ```Haskell
 case e1 of True  = e2
            False = e3
 ```
 
-The then/else must be on same line or or same indent as if: the e2 and e3 must be of same line or deeper indentation.
+The then/else must be on same line or or same indent as if: the e2 and e3 must be of same line or deeper indentation (see Offside Rule)
 
 **WARNING**: The entire construct is an expression, NOT a statement: it will return either e2 or e3.
 
-#### Do
+### Do
 
-#### Guards (the true conditional control)
+TODO: See Monadic Programming.
+
+### Guards (the true conditional control)
 
 ```Haskell
 fact :: Integer -> Integer
@@ -168,11 +216,12 @@ fact n
     | otherwise = n * fact (n-1)
 ```
 
-When dealing with lists, can pattern match on `[]`, `[x]` or `(x:xs)`
+**TIP**: When dealing with lists, can pattern match on `[]`, `[x]` or `(x:xs)`
 
-#### Case
+### Case
 
-It is a switch-case equivalent. **WARNING**: This is an expression that evaluates to something; switch-case was mere control flow.
+It is a switch-case equivalent. However switch-case was mere control flow in C/Java; here is an expression that evaluates to something.
+
 ```Haskell
 take m ys = case (m,ys) of
               (0,_)    -> []
@@ -181,13 +230,13 @@ take m ys = case (m,ys) of
               _ -> some_default_expr
 ```
 
-### Bindings
+## Bindings
 
-For both Let and Where:
-- Patterns can be used e.g. `let (x,y,z) = (1,2,3) in x+y+z`, `where (f:_) = firstname` only grabs the `f`.
+For both `let` and `where`:
+- Patterns can be used e.g. `let (x,y,z) = (1,2,3) in x+y+z`, `where (f:_) = f`
 - Functions can be defined as such e.g. `where deadder a b = a+b-1`
 
-#### Let
+### Let
 
 Binding is done as 
 ```Haskell
@@ -195,14 +244,14 @@ let pi  = 3.14
     tau = 6.28
 in ...
 ``` 
-where `...` is the context of its uses; it is a local variable.
-- This is related to where as `... where pi = 3.14` achieves similar functionality
+where `...` is the context of its use; it is confined to between the `let` and the end of the `...` expression.
+- This is related to `where` as `... where pi = 3.14` achieves similar functionality
 - However, while the above is an EXPRESSION, the use of `where` is not
-- Can be used in list comprehensions alongside filters and generators, albeit what is bound cannot be used in the element pattern
-- Cannot be used across guards (and so typically where is used for guards)
+- Can be used in list comprehensions alongside filters and generators, albeit any variable bound as such cannot be used in the element pattern
+- Cannot be used across guards (and so typically `where` is used for guards)
 - The `in` can be omitted in GHCi if defining functions/constants
 
-#### Where
+### Where
 
 An effective variable substitution. Aim to match indentation with guards (if any) and b/t each substituted term.
 ```Haskell
@@ -223,29 +272,49 @@ describeList xs = "The list is " ++ what xs
           what xs = "a longer list." 
 ```
 
-Where can only be used at the top level of a function.
+**WARNING**: `where` can only be used at the top level of a function.
 
-### Types
+## Types & Classes
 
-#### Concrete Types
+### Concrete Types
 
 Concrete types include:
-- Int, Integer (unbounded size)
-- Bool, Char (note `String == [Char]`, strings use `""` and characters `''`)
+- Int (bounded size), Integer (unbounded size)
+- Bool, Char (strings use `""` and characters `''`)
 - Double, Float (former is preferred)
 
 Note that String is a *type synonym* for `[Char]` i.e. they are equivalent.
-
-Tuples: `(a, b)`, `(a,b,c)` etc. Tuples of different length/composition are explicitly different types altogether.
-> Use `fst` and `snd` to fetch 1st, 2nd elements of 2-tuples **only**
-
-**Empty tuples are functions** e.g. `(,,)` is equivalent to `\x y z = (x,y,z)`
 
 **Type Constructor**: A function that takes types as input, builds a new type. 
 - `[]` and `(,)` are inbuilt
 - Custom type constructors must be capitalized
 
-**Parametric Inputs** are typically as simple as using `a` instead of an actual type. Haskell fills in blanks at runtime.
+**Tuples** are `(a, b)`, `(a,b,c)` etc. **Tuples of different length/composition are explicitly different types altogether.**
+> Use `fst` and `snd` to fetch 1st, 2nd elements of **only** 2-tuples
+> **Empty tuples are functions**: e.g. `(,,)` is equivalent to `\x y z = (x,y,z)`.
+
+**Lists** must contain elements of equal type (and equal nesting): no random mixtures like in Python. By convention they are stored as `xs`, `ys` etc.
+
+List types: lists `[a]`, nested lists `[[a]]` etc. (note these examples are distinct types)
+
+Examples:
+- "Hello" (strings are equivalent to type `[Char]`)
+- **Ranges**: `[1..4]`, `['a'..'e']`, `[1,3..7]`, `[1..]`, `[1,1..]`, `[5,4..1]`
+> Don't use with Float/Double as imprecision leads to accumulated errors
+
+Lists are comparable, and are compared lexicographically (1st index, then 2nd etc.). In ties, the longer list wins.
+
+### Common Prelude Types
+
+Some Prelude data types include:
+- **Eithers** are informally defined as `data Either a b = Left a | Right b deriving (Eq, Ord, Read, Show)`. 
+- **Maybes** are defined as `data Maybe t = Nothing | Just t deriving (Eq, Ord)`
+> Note the additional functions `fromJust, isJust, isNothing, mapMaybe` (and many more) in `Data.Maybe` (and others in `Data.Either`) to use it
+
+### Parametric Functions
+
+**Parametric Arguments** are typically as simple as using `a` instead of an actual type. Haskell fills in blanks at runtime.
+> **WARNING**: Do not use capital letters for these. Capital words begin type constructors and Haskell will confuse them.
 
 ```Haskell
 map :: (a -> b) -> [a] -> [b]
@@ -253,62 +322,42 @@ map f []     = []
 map f (x:xs) = f x : map f xs
 ```
 
-Some Prelude data types include:
-- **Eithers** are informally defined as `data Either a b = Left a | Right b deriving (Eq, Ord, Read, Show)`. 
-- **Maybes** are defined as `data Maybe t = Nothing | Just t deriving (Eq, Ord)`
-> Note the additional functions `maybe, fromJust, isJust, isNothing, listToMaybe, maybeToList, mapMaybe` to use it
-> **EXAMPLE USE**: Whenever a function could return 'null' (e.g. a search) use return type `Maybe a`
-
-##### Lists
-
-List types: lists `[a]`, nested lists `[[a]]`.
-
-**Lists** must contain elements of equal type: no random mixtures like in Python. By convention they are stored as `xs`, `ys` etc.
-
-Examples:
-- Ranges: `[1..4]`, `['a'..'e']`, `[1,3..7]`, `[1..]`
-> Don't use with Float/Double as imprecision leads to accumulated errors
-- "Hello" (strings are equivalent to type `[Char]`)
-
-Lists are comparable, and are compared lexicographically (1st index, then 2nd etc.). In ties, the longer list wins.
-
-#### Casting
+### Casting
 
 Though technically impossible there are some situations analogous to casting.
 
+Firstly, all constants are inherently Polymorphic (based on some type class) and their type inferred based on context
+> E.g. `3 + 2.0` will infer `3` to be of same type as `2.0` and so it works
+
 **Type annotation**: Where the code specifies the type of an expression output.
-- E.g. `read "4" :: Int`
-- Typically used when Haskell is unclear (e.g. reading)
+- E.g. `read "4" :: Int` forces the output to be treated as an Int; typically used when Haskell is unclear (e.g. reading)
 - Can be used for type casting of unconstrained type
     - E.g. `2 - 1 :: Double` works (not fixed to `Int`)
     - E.g. `length xs :: Float` fails (`length` specifically outputs `Int`)
 
-Can also use functions like `fromIntegral` to cast strict `Int`, `Integer` to work with other `Num`
+Can also use functions like `fromIntegral` to cast strict `Int`, `Integer` to work with other `Num`. `Fractional` etc.
 - E.g. `length xs / 2` fails but `fromIntegral (length xs) / 2` works
 
-#### Typeclasses
+### Typeclasses
 
 A **typeclass** is a collection of types with some shared property (think interface in Java).
 
 Common examples:
  - `Num` types can do arithmetic: includes the `Integral` Int, Integer and `Floating` Float, Double (both are also valid typeclass)
- - `Ord` types comparison (including equality)
  - `Eq` can be equated `==`
- - `Show` can be converted to string rep. Note that **functions are NOT showable and thus cannot be printed in gchi**
+  - `Ord` types can do comparison (including equality). A subclass of `Eq`
+ - `Show` types can be converted to string representation. Note that **functions are NOT showable and thus cannot be printed (you can do :t though)**
  - `Enum` can be enumerated (Bool/Char/Nums, (), Ordering)
- > `succ` and `pred` fetch for Enumerable data
- - `Bounded` have bounds accessed by the "polymorphic constants" `minBound :: <type>`, `maxBound :: <type>`
-> Works on tuples of Bounded items
- - `Foldable`
+ > `succ` and `pred` fetch prev/next items for Enumerable data
+ - `Bounded` have bounds accessible by the "polymorphic constants" `minBound :: <type>`, `maxBound :: <type>` (e.g. `maxBound :: Int`, `maxBound (Int, Bool)`)
+ - `Foldable` types can be folded with `foldl`, `foldr` etc.
  - `Read` types can be extracted from a string representation and use `read` to do so
 
  These are used in type signatures as `<fxn> :: Num a => [a] -> a`, or `(Num a, Ord a)` ... 
 
- **WARNING**: There is no need to 'list out' the type parameters in function type declarations. This listing occurs only in data constructors.
+ **TIP**: When it compares to Ord: the comparison order is determined by the definition, and left-right order when the data constructor is equal OR not (**lexicographic ordering**).
 
- **WARNING**: When it compares to Ord: the comparison order is determined by the definition, and left-right order when the data constructor is equal OR not (**lexicographic ordering**).
-
-##### Defining Classes & Instances
+### Defining Classes & Instances
 
 A class definition is structured as such:
 
@@ -321,35 +370,32 @@ class (<Optional parent class> a =>) <Name> a where
 
 The specification of those functions automatically rolls the typeclass constraint into their type.
 
-A *class instance* is declared like
-
+A **class instance** is declared like
 ```Haskell
-instance (Eq m) => (Maybe m) where
+instance Eq m => (Maybe m) where
     Just x == Just y = x == y
     Nothing == Nothing = True
     _ == _ == False
 ```
 
-and multiple of these are possible.
+and multiple of these are possible for a given type.
 
-For `Eq`, you need to completely explain when it is equal, or not equal, as the base definition is recursive.
+For `Eq`, you only need to completely explain when it is equal OR not equal, as the base definition is recursive.
 
-In general, you need to pattern match against all data constructors and define behaviour - at which point your data type will be of that typeclass.
+In general, you need to pattern match against all data constructors and define behaviour when instantiating for exhaustiveness.
 
-#### Type Synonym
+### Type Synonym
 
-**Type synonyms** are equivalent types, and can be substituted for each other. Facilitated with `type Name = expr`
+**Type synonyms** are equivalent types, and can be literally substituted for each other. Facilitated with `type Name = expr`
 - `type Pair = (Int, Int)`
 - `String` is a synonym of `[Char]`
 
 **Polymorphic type synonyms** are possible such as `type Pair x y = (x,y)`, which renders `Pair` a type constructor.
-- Still a curried function so partials like `type IntMap = Map.Map Int` are allowed
+> Even type constructors are curried, so partials like `type IntMap = Map.Map Int` are allowed
 
-#### Data Constructors
+### Data/Value Constructors
 
-Facilitated with `data <TypeName> = <exprs..>`
-
-**Data Constructor**: 
+When an **algebraic data type** is facilitated with `data <TypeName> = <Constructor> <args> | <Constructor2> ..`, a **Data Constructor** is used to flag different potential structures. Using the `data` flag tells Haskell a new type and new data constructors are being made.
 
 Examples:
 - `data myBool = myTrue | myFalse`. The myTrue, myFalse are implicit arity-0 data constructors a.k.a *nullary* data constructors
@@ -358,7 +404,7 @@ Examples:
 - Recursive: `data List = ListNode Int List | ListEnd`. 
 > This is to say a `List` can have value `(ListNode Int List)`or `(ListEnd)`, and that `List` could be `ListEnd` or another `(ListNode Int Sublist)`
 
-Note: the ability to have `ListNode Int List | Empty`, i.e. a combination of DIFFERENT structures (due to disjunction (|) and conjunction ( )) means Haskell has **discriminated union types**. 
+Note: the ability to have `ListNode Int List | Empty`, i.e. a combination of DIFFERENT structures means Haskell has **discriminated union types**. 
 
 A function might be as below:
 ```Haskell
@@ -368,17 +414,18 @@ invert :: Point -> Point
 invert (Pt x y) = Pt y x
 ```
 
-Note that the type name and data constructor can have same name.
+Note that the type name and data constructor can have same name, but are **very** different. One makes a type, the other makes the data.
 
 Inheritance of typeclasses by data types is facilitated as 
  ```Haskell
- data Name (param-types?) = expr
+ data Name (<params for types>) = expr
     deriving (Eq, Show)
  ```
 
  Alternately if you want to custom-define the mechanism:
  ```Haskell
- instance Show Name where show = (some fxn of type Name -> String)
+ instance Show Name where 
+    show = <some fxn :: Name -> String>
 ```
 
 **Polymorphic data constructors** are possible: e.g. `data List a = ListNode a (List a) | ListEnd`.
@@ -386,31 +433,29 @@ Inheritance of typeclasses by data types is facilitated as
 
 **WARNING: It is (now) impossible to add typeclass constraints to data constructors**
 
-##### Record Syntax
-
-The form is as below (of course one-line is possible):
+**Record Syntax** is an alternate form for data construction (of course one-line is possible):
 ```Haskell
 data Person = Person { firstName :: String
                      , ...
                      } deriving (Show)
 ```
 
-Use of record syntax automatically generates getter functions for each field so that `firstName person` is possible, and showing it will look more like a dictionary/map.
+Use of record syntax automatically generates global getter functions for each field so that `name = firstName person` is possible; printing it is also prettier.
 
-**Pattern matching on records** can be done as normal but also like `func (Person {firstName = f, ...}) n = ... `
+Note that **Pattern matching on records** can be done as usual but also like `func (Person {firstName = f, ...}) n = ... `
 
-#### Newtype
+### Newtype
 
-**newtype** is used when you want to construct a new type that 'wraps' other types, with one constructor, and one field.
-- E.g. `newtype Zipper = ZipList {getZipList :: [a]}` is built of other types
+**newtype** is used when you want to construct a new type that 'wraps' other types, with one data constructor and one field (internal value).
+- E.g. `newtype Zipper = ZipList {getZipList :: [a]}` is built off other types
 
 Benefits:
 - More efficient (Haskell can recycle old definitions rather than reconfigure a new type)
 - Can facilitate easy access with getter functions via record syntax definitions
 - Allows lazier Haskell than `data` in rare cases
-- Can allow for greater versatility in instantiation (e.g. a tuple where functions act on the first member only; used with monoids where multiple a. b. functions work for a data type)
+- Can allow for greater versatility in instantiation (e.g. a tuple where functions act on the first member only; see monoids, where multiple a. b. functions work for a data type)
 
-### Comprehensions
+## Comprehensions
 
 The looping method of Haskell. Written as `[expr | pattern <- list, filterfunc args]` or `[expr | generator, filter]`. Typically `[f x | x <- xs, g x]`
 
@@ -433,47 +478,46 @@ l = [ x++" "++y
 
 Note the pattern matching in  `dot xs ys = sum [x*y | (x, y) <- zip xs ys]`
 
-### Laziness
+## Laziness
 
 Haskell only computes ranges of a list/function when absolutely required.
 
-### Modules
+TODO.
+
+## Modules
 
 Haskell *programs* are a collection of **modules** which each contain functions, types and typeclasses.
 
 **Importing** is essentially `import <name>` e.g. `import Data.List`
 - For specific imports, do `import <name> (<f1>, ..) hiding (<g1>, ...)`
-- To resolve clashes, qualify imports as `import qualified <name> (as <alias>)` so used functions are called as `<alias>.<fname>` (note the renaming can be done even without qualifying)
-
-#### DIY Modules
+- To resolve clashes, qualify imports as `import qualified <name> (as <alias>)` so used functions are called as `<name>.<fname` or when an alias given, `<alias>.<fname>` (note the renaming can be done even without qualifying)
+- Other modules in the same directory can be imported using their (full) name
 
 File structure:
 
 ```Haskell
 module <Filename>
-(, <f to export>
-, <datatype>(<constructor1>, ...)
-, <noncreateable datatype> -- Can be used, just not as data New = ..
-,
+(, <name of func to export>
+, <datatype name to export>(<constructor1>, ...)
+, <noncreateable datatype name to export> -- NO value constructors = can't make yourself, but you can still interact
 , ...
 ) where 
 
-<code>
+-- For main files, need a main function of type main :: IO ()
+main = <main function>
+
+<rest of code>
 ```
 
 Directory structure:
 
-```Haskell
-<GroupFolder>
--- <SubOne.hs> ==> In this file, type 'module GroupFolder.SubOne'
--- <SubTwo.hs> ==> In this file, type 'module GroupFolder.SubTwo'
-```
+- <GroupFolder>
+  - <SubOne.hs> ==> In this file, type `module GroupFolder.SubOne`
+  - <SubTwo.hs> ==> In this file, type `module GroupFolder.SubTwo`
 
-Other modules in the same directory can be imported using their (full) name.
+# Reference for Modules, GHC
 
-## Modules Guide
-
-### Prelude
+## Prelude
 
 Common: `max`, `even`, `min`, `length`, `null` (checks if list empty), `!!` (indexing), `++` (infix list concat.)
 - Fun fact: `!!`, `length` run in linear time due to Haskell NOT having random access
@@ -518,7 +562,7 @@ Other:
 - `error` takes a string and generates a runtime error
 > Must type annotate if the output is not used
 
-### Data.List
+## Data.List
 - `is<...>Of` for Subsequence, Suffix, Prefix and Infix
 - `concat` removes one level of nested list
 - `intersperse` concatenates a list with an element between
@@ -532,7 +576,7 @@ Other:
 - `xs \\ ys` removes as many `ys` values from `xs` as possible (i.e. think remove i xs for all i in ys)
 - `isPrefixOf xs ys`
 
-### GHC
+## GHC
 - `:t f` or `:type f` gives type of `f` or any other haskell expr
 - `:m + Data.List <other> <others...>` to import modules
 - `:set -fwarn-incomplete-patterns` to warn on incomplate patterns
@@ -549,4 +593,5 @@ Other:
 -- Equivalent to   (+) x 1 y = ...
 ```
 - I'm finding the associativity of `<$>`, `<*>` a little tough. How does it wrap up 3 1-arity functions with a 3-arity operator?
+- Precedence of `<$> <*> <> mappend mempty mconcat` operators
 - Where is only top-level function? meaning of top-level?
