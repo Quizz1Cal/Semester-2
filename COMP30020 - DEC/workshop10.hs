@@ -40,9 +40,6 @@ str_to_num xs
           left = init xs
 
 -- Q4
--- hmmm...
 
 -- Q5
 -- Why so cruel
-
-
