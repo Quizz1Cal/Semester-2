@@ -95,6 +95,15 @@ let .. = .. in (straight code)
 let r2 = loop2func args. in -- LOOP
 ```
 
+## While
+
+```Haskell
+whiler <args> =
+    if cond <args>
+    then return $ final <args>
+    else whiler $ next <args>
+```
+
 ## Data Structures
 
 ### Trees

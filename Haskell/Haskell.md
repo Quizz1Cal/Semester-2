@@ -56,9 +56,9 @@ I acknowledge "Learn You a Haskell for Great Good!" notes by Miran Lipovaca [loc
 - There isn't really a concept of a null value. 
 - **Discriminated union types**
 - **Strong, safe and static** type system:
-> No loopholes (naughty casting illegal)
-> Type errors don't happen e.g. wrong deferencing
-> Types are checked/determined at compilation
+- No loopholes (naughty casting illegal)
+- Type errors don't happen e.g. wrong deferencing
+- Types are checked/determined at compilation
 
 ## Basics
 
@@ -71,7 +71,9 @@ All punctuation-based operators are infix functions.
 Commenting: `-- .....` and `{- multiline -}`
 
 **infix**: takes arguments on left/right e.g. `+`. **Prefix** operators take arguments strictly on right.
+
 > Convert infix to prefix with bracketing `(+) 1 2`. 
+
 > Convert prefix to infix with \` e.g. `1 \`div\` 2`
 
 Arithmetic operators: `*,^,/, div` (prefix), `mod` (prefix)
@@ -85,10 +87,14 @@ Logical operators: `&&, ||, not`
 ### Expression Evaluation
 
 This loop is the rough basis:
-> Look for a function call in expression
-> Search equations/patterns for this from top down for a match
-> Set values to corr. parts of actual arguments
-> Replace the function call in expression, with the RHS
+1. Look for a function call in expression
+
+2. Search equations/patterns for this from top down for a match
+
+3. Set values to corr. parts of actual arguments
+
+4. Replace the function call in expression, with the RHS
+
 
 ### Code Grouping (+ Offside Rule)
 
@@ -223,11 +229,12 @@ fact n
 It is a switch-case equivalent. However switch-case was mere control flow in C/Java; here is an expression that evaluates to something.
 
 ```Haskell
-take m ys = case (m,ys) of
-              (0,_)    -> []
-              (_,[])   -> []
-              (n,x:xs) -> x : take (n-1) xs
-              _ -> some_default_expr
+take m ys = 
+  case (m,ys) of
+    (0,_)    -> []
+    (_,[])   -> []
+    (n,x:xs) -> x : take (n-1) xs
+    _        -> some_default_expr
 ```
 
 ## Bindings
@@ -291,6 +298,7 @@ Note that String is a *type synonym* for `[Char]` i.e. they are equivalent.
 
 **Tuples** are `(a, b)`, `(a,b,c)` etc. **Tuples of different length/composition are explicitly different types altogether.**
 > Use `fst` and `snd` to fetch 1st, 2nd elements of **only** 2-tuples
+
 > **Empty tuples are functions**: e.g. `(,,)` is equivalent to `\x y z = (x,y,z)`.
 
 **Lists** must contain elements of equal type (and equal nesting): no random mixtures like in Python. By convention they are stored as `xs`, `ys` etc.
@@ -343,15 +351,15 @@ Can also use functions like `fromIntegral` to cast strict `Int`, `Integer` to wo
 A **typeclass** is a collection of types with some shared property (think interface in Java).
 
 Common examples:
- - `Num` types can do arithmetic: includes the `Integral` Int, Integer and `Floating` Float, Double (both are also valid typeclass)
- - `Eq` can be equated `==`
-  - `Ord` types can do comparison (including equality). A subclass of `Eq`
- - `Show` types can be converted to string representation. Note that **functions are NOT showable and thus cannot be printed (you can do :t though)**
- - `Enum` can be enumerated (Bool/Char/Nums, (), Ordering)
- > `succ` and `pred` fetch prev/next items for Enumerable data
- - `Bounded` have bounds accessible by the "polymorphic constants" `minBound :: <type>`, `maxBound :: <type>` (e.g. `maxBound :: Int`, `maxBound (Int, Bool)`)
- - `Foldable` types can be folded with `foldl`, `foldr` etc.
- - `Read` types can be extracted from a string representation and use `read` to do so
+- `Num` types can do arithmetic: includes the `Integral` Int, Integer and `Floating` Float, Double (both are also valid typeclass)
+- `Eq` can be equated `==`
+- `Ord` types can do comparison (including equality). A subclass of `Eq`
+- `Show` types can be converted to string representation. Note that **functions are NOT showable and thus cannot be printed (you can do :t though)**
+- `Enum` can be enumerated (Bool/Char/Nums, (), Ordering)
+> `succ` and `pred` fetch prev/next items for Enumerable data
+- `Bounded` have bounds accessible by the "polymorphic constants" `minBound :: <type>`, `maxBound :: <type>` (e.g. `maxBound :: Int`, `maxBound (Int, Bool)`)
+- `Foldable` types can be folded with `foldl`, `foldr` etc.
+- `Read` types can be extracted from a string representation and use `read` to do so
 
  These are used in type signatures as `<fxn> :: Num a => [a] -> a`, or `(Num a, Ord a)` ... 
 
@@ -435,9 +443,10 @@ Inheritance of typeclasses by data types is facilitated as
 
 **Record Syntax** is an alternate form for data construction (of course one-line is possible):
 ```Haskell
-data Person = Person { firstName :: String
-                     , ...
-                     } deriving (Show)
+data Person = Person { 
+  firstName :: String
+  , ...
+} deriving (Show, ..)
 ```
 
 Use of record syntax automatically generates global getter functions for each field so that `name = firstName person` is possible; printing it is also prettier.
@@ -582,18 +591,12 @@ Other:
 - `:t f` or `:type f` gives type of `f` or any other haskell expr
 - `:m + Data.List <other> <others...>` to import modules
 - `:set -fwarn-incomplete-patterns` to warn on incomplate patterns
-- `:info <TypeClass>`
+- `:set +m` for multiline, although just do `:{` and `:}`, that works well
+- `:info <anything>` is the functional info, `:doc <some_func/class/etc.>` is a string desc.
 
 # Questions
 
--Spacing convenntion for guards, wheres
 - Mixing where/let for same sentence is bad practice
 - Can't assign a set to a variable in Module 6...?
-- What the hell is this:
-```Haskell
-  (x + 1) y = ...	-- Function binding, defines (+)
--- Equivalent to   (+) x 1 y = ...
-```
 - I'm finding the associativity of `<$>`, `<*>` a little tough. How does it wrap up 3 1-arity functions with a 3-arity operator?
 - Precedence of `<$> <*> <> mappend mempty mconcat` operators
-- Where is only top-level function? meaning of top-level?
