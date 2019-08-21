@@ -1,28 +1,42 @@
--- Wk 11 ALT
+{-
+:Author: Callum H
+:Title: Workshop11ALT - Animals game
+:Purpose: 
+  Simulates a classic Animals game. The program starts knowing only
+  of penguins. Over time as the user thinks and the program attempts to
+  guess, it request more animal names and questions to distinguish them.
+  The game ends when the programs successfully guesses a thought animal.
+:future:
+  Could build a thorough dictionary of questions and import for a more
+  interesting experience.
+-}
 
--- Tree. NO <> YES. If you get to a Leaf, that's when you ask "is it a ..."
 type Animal = String
 type Question = String
 type Answer = String
+-- InfoTuple stores the new info required to extend a tree at each round.
+type InfoTuple = (Animal, Question, Answer)
+
+{- Tree structures questions, with animal guesses as leaves.
+   LEFT is NO, RIGHT is YES. 
+   Finished flags game over.
+-}
 data Tree = Finished | Leaf Animal | Decision Question Tree Tree
     deriving (Eq, Show)
 
-{- Note: while Decision Q Finished Finished is possible (bad), 
-    by nature of code it would not happen.
--}
+-- Constants
+NO = "NO" :: Question
 
 -- Main function
 main :: IO ()
 main = do
-  start_game_prompt
+  start_round_prompt
   (_,tree) <- (iterate (>>= traverseWithCount) (return initial)) !! 20
   return ()
   where initial = (0, Leaf "Penguin")
 
--- Tree traversal
-{-
-Traverses the given tree based on user IO. 
-Computes the number of guesses if success, or for failure.
+{- Traverses the given tree based on user input.
+   Computes the number of guesses n by computer.
 -}
 traverseWithCount :: (Int, Tree) -> IO (Int, Tree)
 traverseWithCount (n,tree) = 
@@ -31,57 +45,46 @@ traverseWithCount (n,tree) =
       -- Game has already finished, ignore
       return (n, Finished)
     Decision q lt rt -> do 
+      -- Pose a question, use answer to traverse down
       ans <- question_prompt q
-      if (ans == "NO")
+      if (ans == NO)
       then do
         (newn,newlt) <- traverseWithCount (n,lt)
-        return (
-          if newlt == Finished 
-          then (newn, Finished)
-          else (newn, Decision q newlt rt)
-          )
+        if newlt == Finished 
+        then return (newn, Finished)
+        else return (newn, Decision q newlt rt)
       else do
         (newn,newrt) <- traverseWithCount (n,rt)
-        return (
-          if newrt == Finished 
-          then (newn, Finished)
-          else (newn, Decision q lt newrt)
-          )
+        if newrt == Finished 
+        then return (newn, Finished)
+        else return (newn, Decision q lt newrt)
     Leaf animal -> do 
       ans <- leaf_prompt animal
-      if (ans == "NO")
+      if (ans == NO)
       then do
         -- Gets more info from user, updates tree for next round
         new_data <- new_data_prompt animal
-        start_game_prompt
+        start_round_prompt
         return (n+1, insert tree new_data)
       else do
         -- Game over - pass empty tree to kill future calls
         end_game_prompt n
         return (n, Finished)
 
-{-
-Inserts a new info tuple where some conflict occurred.
-I.e. Was finally asked if it's a penguin, but user said so.
-This converts Leaf Penguin to a branch into Penguin or the new item.
+{- Inserts a newly retrieved question/animal where program was wrong.
+   :conflict: The animal that the program just guessed, but was wrong about.
 -}
-insert :: Tree -> (Animal, Question, Answer) -> Tree
+insert :: Tree -> InfoTuple -> Tree
 insert conflict (newAnimal, q, newAns) = 
   Decision q left right
   where 
     (left, right) = 
-      if (newAns == "NO")
+      if (newAns == NO)
       then (Leaf newAnimal, conflict)
-      else (conflict, Leaf newAnimal)
-        
+      else (conflict, Leaf newAnimal) 
 
--- IO operations. 
-{-
-Note how the output has to be piped as an IO OUTPUT_TYPE, 
-cause that's how do works, it outputs the Monadic structure
--}
-new_data_prompt :: String -> IO (Animal, Question, Answer)
-new_data_prompt prior = 
+-- Prompts user for what they thought of to add to decision tree.
+new_data_prompt :: String -> IO InfoTuple
   do 
     putStr $ "Sorry! What was your animal?\t"
     animal <- getLine
@@ -92,12 +95,14 @@ new_data_prompt prior =
     putStr $ "Thanks!\n\n|| NEXT ROUND ||\n\n"
     return (animal, question, answer)
 
-start_game_prompt :: IO ()
-start_game_prompt = do
+-- Used at beginning of each round to prompt for thought.
+start_round_prompt :: IO ()
+start_round_prompt = do
   putStr "Think of an animal. Hit return when ready. "
   getLine
   return ()
 
+-- Game over message, displays total playthroughs required
 end_game_prompt :: Int -> IO ()
 end_game_prompt tries = 
   putStrLn $ "Haha! I guessed it with " ++ str_tries ++ "!"
@@ -107,17 +112,19 @@ end_game_prompt tries =
       then "1 fail"
       else (show tries) ++ " fails"
 
+-- Formats and asks a decision question to the user, retrieves answer
 question_prompt :: String -> IO String
 question_prompt q =
   do putStr $ "QUESTION > " ++ q ++ "\t"
      getLine
  
+-- Asks if user has thought of a specific animal, retrieves answer
 leaf_prompt :: String -> IO String
 leaf_prompt animal = 
   do putStr $ "QUESTION > Is it a " ++ animal ++ "?\t"
      getLine
       
--- Example
+-- Example hierarchy generated after a game.
 example = (5,
   Decision "Wings?" 
     (Decision "Can fly?" 

@@ -1,58 +1,74 @@
 {-
-N-Queens solver. Use printAll or getter $ (N) to generate answers.
+:Author: Callum H
+:Title: N-Queens Solver for NxN board. 
+:Purpose: 
+  Given a desired dimension N, the program generates all solutions.
+  There is no attempt to eliminate rotationally similar solutions.
+  The option to print to the screen is provided.
 -}
 
-import Data.List (sort, nub)
 -- Use for reducing solution space
+import Data.List (sort, nub)
 
--- Type synonyms. Note chose to index from 1.
+{- Type synonyms for main structures. 
+   Boards have indices 1 to N along row and column.
+-}
 type Queen = (Int,Int)
 type Board = [Queen]
 
 -- To print all solutions for an N-Queens problem
-printAll n = sequence_ $ map (printer n) (getter n) 
+printAll :: Int -> IO ()
+printAll n = sequence_ $ map (printBoard n) (solver n) 
 
--- Prints a board
-printer :: Int -> Board -> IO ()
-printer _ [] = return ()
-printer n board = sequence_ [printPiece n (x,y) board | x <- [1..n], y <- [1..n]]
+-- Printing wrapper function, uses printPiece for piecewise representation
+printBoard :: Int -> Board -> IO ()
+printBoard _ [] = return ()
+printBoard n board = sequence_ [printPiece n (x,y) board | x <- [1..n], y <- [1..n]]
 
--- Help function for board printing
+-- Helper function, prints an individual piece and appropriate newline/space
+printPiece :: Int -> Queen -> Board -> IO ()
 printPiece n (x,y) board =
-  putStr (flag:line)
+  putStr (symbol:separator)
   where 
-    flag = 
+    symbol = 
       if (x,y) `elem` board
       then 'Q' 
       else '.'
-    line =
-      if (y==n)
+    separator =
+      if (y == n)
       then 
-        if (x==n)
-        then "\n\n"
+        if (x == n)
+        then "\n\n" 
         else "\n"
       else " "
 
 -- Retrieves solutions to the N-Queens problem with board size (NxN)
-getter :: Int -> [Board]
-getter n = nub $ (iterate (>>= next n) (return [])) !! n
+solver :: Int -> [Board]
+solver n = nub $ (iterate (>>= allAdditions n) (return [])) !! n
 
--- Given a (valid) board with m queens, finds all m+1 boards using these previous that are valid
-next :: Int -> Board -> [Board]
-next n board = [
+{- Given a (valid) board with m queens, 
+   finds all m+1 boards using these previous that are valid.
+-}
+allAdditions :: Int -> Board -> [Board]
+allAdditions n board = [
   insert (x,y) board | 
   x <- [1..n]
   , y <- [1..n]
   , isValid n (x,y) board
   ]
 
--- Inserts a queen into a board. No validity check
+{- Inserts a queen into a board. Sorts for consistency.
+   Assumes board is valid.
+-}
 insert :: Queen -> Board -> Board
-insert queen board = sort $ [queen] ++ board
+insert queen board = sort $ queen : board
 
--- Checks if a queen to be inserted yields a valid board
+{- Checks if inserting the given queen yields a valid board.
+   Assumes given board is already valid
+-}
 isValid :: Int -> Queen -> Board -> Bool
 isValid n queen board = 
+  -- Check for Valid index; and that no row/col/diagonal overlaps
   (1,1) <= queen && queen <= (n,n)
   && not (fst queen `elem` (map fst board))
   && not (snd queen `elem` (map snd board))

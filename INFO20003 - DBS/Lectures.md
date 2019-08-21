@@ -10,14 +10,7 @@
 
 **Schema**: A descr. of a particular collection of data, using a given data model
 
-#### EXTRA: Query Languages
-- *Data definition language* (DDL): Defines and sets up a DB
-- *Data manipulation language* (DML): Maintains and uses the DB 
-- *Data control language* (DCL): Control access to DB
-
-# Recent Notes
-
-## Lecture 1
+# Lecture 1: Introductions
 
 **Data**: Known facts stored and recorded (e.g. text, numbers etc.)
 - The RAW INFORMATION
@@ -36,7 +29,8 @@
 - BENEFIT: Manage data in structured way
 - Predominantly relational databases, i.e. *rows and columns form RELATIONS* and *keys/foreign keys link RELATIONS*
 
-### Benefits of DBMS (rel. to FPS)
+
+**Benefits of DBMS (rel. to FPS)**:
 - Data independence: Separation of DATA and PROGRAM/LOGIC with a *data repository* and *central management*
 - Minimal data redundancy: Controlled by *normalisation* (to break down a relationship b/t two relations into a set of smaller relations)
 - Improved data consistency: Single store, no disagreements, update problems, minmal storage space required
@@ -48,8 +42,7 @@
 
 This is a collection of programs that store/manage *files* in computer. Each program has its own set of data files, often restructured to meet needs of new application.
 
-### Flaws (rel. to DBMS)
-
+Flaws:
 - Program-data dependence: Changing the file necessitates program change; program 'knows too much a/b low-level data structure'
 - Duplication of data: Wasteful, loss of integrity (e.g. same name, different data)
 - Limited data sharing: Data is tied to application, adhoc reports difficult
@@ -264,7 +257,7 @@ CREATE TABLE Works_In
      ...,
      PRIMARY KEY(dname, ssn),
      FOREIGN KEY(ssn) REFERENCES Employees
-       ON DELETE CASCADE)
+       ON DELETE CASCADE) -- If Employees has a deletion, THIS gets updated
  )
 ```
 
@@ -293,7 +286,7 @@ In order to toggle participation, go to foreign key. Whichever side is NOT manda
    Also note the explicit declaration of the field that is referenced. 
  */ 
 CREATE TABLE CustomerAddress (
-    CustomerID smallint,
+    CustomerID smallint auto_increment, -- If you don't have your own ID form
     AddressID smallint,
     AddressDateFrom DATE,
     AddressDateTo DATE,
@@ -358,7 +351,7 @@ Also note that the one-to-many relationships is the same direction as the arrow 
 
 In WEAK relationships, the arrow points to the CONTAINER (only one container), the unique thing that everything depends on.  
 
-# Relational Algebra
+# Lecture 7: Relational Algebra
 
 **Relational algebra** are operations with input/output relations. 
 
@@ -417,7 +410,7 @@ Combines two relations by merging the rows of the inputs so that the final relat
     - `\rho(C(1->sid1, 2->sid5), S |X| S)`
     - `\pi_{sid1, sid2}\sigma_{rating1=rating2} (S |x| S)` (need natural to avoid (same,same))
 
-# SQL
+# Lecture 8: SQL
 
 **SQL** is a structured query language used in relational databases, supporting (like a DBMS) creation, reading/select, update and deletion commands.
 - **Data Definition Language (DDL)**: Defines and sets up a database. `CREATE, ALTER, DROP`
@@ -451,9 +444,12 @@ SELECT [ALL|DISTINCT]                           -- Rows/calc'd fields. DISTINCT 
 
 -- ORDER IS IMPORTANT
 
--- Some aggregators
+-- Some aggregators. Not that excluding count, they all ignore nulls
 AVG(), MIN(), MAX(), COUNT(<Field>), SUM(*) etc.. are nice
 SELECT COUNT(Field) FROM Table GROUP BY OtherField -- SELECTS from EACH GROUP and collates
+
+-- Comparators
+ANY (), ALL (), IN, NOT IN
 
 SELECT AVG(Balance) 
 FROM Source1, Source2 -- CROSS-PRODUCT
@@ -480,6 +476,7 @@ SELECT ... OFFSET 5;  -- Drop first 5 output
 "NOTE THE SUBSCRIPTING FOR DIFFERENT SOURCE, SAME COLNAME"
 SELECT ... FROM Customer INNER JOIN Account
     ON Customer.CustomerID = Account.CustomerID;
+    -- supposedly,`USING (CustomerID)` is also valid syntax
 
 -- Natural. Note there's no need to state the key. An AND
 "ASSUMES KEY(S..?) TO JOIN ON HAVE SAME NAME"
@@ -491,7 +488,9 @@ SELECT ... FROM Customer [LEFT|RIGHT] OUTER JOIN Account
     ON <condition> ... ;
 ```
 
-## Datatypes
+You can union tables through `Table1 <all the code> UNION Table2 <moarcode>`
+
+### Datatypes
 
 - `VARCHAR(n)` occupies up to n length. It is dynamic
 - `CHAR(n)` always occupies n length. Strings can be shorter, but datasize fixed. Great if size is always the same
@@ -503,8 +502,56 @@ SELECT ... FROM Customer [LEFT|RIGHT] OUTER JOIN Account
 - `DECIMAL(n,p)` has n total digits and p decimal places. NO ROUND ERROR
 - `DATE`, `YEAR`, `TIME`, `DATETIME` has formats `YYYY-MM-DD`, `YYYY`, `HH:MM:SS` and `YYYY-MM-DD HH:MM:SS` respectively. VERY precise
 
-# Query Processing & Optimisation
+### Views
 
+These are relations NOT in the conceptual/logical model, but are made available to the user as a virtual relation.
+
+To create them, rather than `CREATE TABLE`, just do `CREATE VIEW`.
+
+# Storage and Indexing (UNOFFICIAL)
+
+Any DBMS must support:
+- Insertion/deletion/modification of records
+- Reading records
+- Scanning records
+
+**File**: Collection of pages with a collection of records.
+- **Heap File**: Records unordered. Alloc/deallocates disk pages as the file grows/shrinks. Can be structured with pointers much like a LL
+    - +: Good when records are accessed uniformly/altogether.
+    - +: Fast insert
+- **Sorted Files**: Records sorted by some condition. Similar LL structure BUT pages/records are ordered.
+    - +: Good where records are pulled in some order, retrieving some range
+    - +: Fast search (binary)
+- **Index File Organisations**: Special DS.
+
+An **index** on a file is a DS built on top of data pages.
+- Stores pointers to a range of data entries (any subset of fields), which in turn link to the data records themselves
+
+#### AND THEN IT GETS A BIT TECHNICY AND I'LL ATTACK IT NEXT WEEK OR SOMETHING
+
+## Comparing Heap/Sorted Files
+
+Use **disk I/Os** to measure performance.
+
+### TABLE OF COMPARISON
+
+Operation | Heap File | Sorted File
+Scan | B | B
+1 Eq Search | 0.5B avg | log2B
+Range Search | B | log2B + #matches
+Insert | 2 | log2B + 2*(B/2)
+Delete | 0.5B + 1 | log2B + 2*(B/2)
+
+# Query Processing
+## Selection
+## Projection
+## Joins
+# Query Optimisation
+## Normalisation
+# Database Administration
+## Transactions
+## Data Warehousing
+## Other DBMS
 
 # Questions
 - Clarify the elements of the tables on slide 20; what is data, information, metadata?
@@ -512,7 +559,10 @@ SELECT ... FROM Customer [LEFT|RIGHT] OUTER JOIN Account
     - can a key be a set of fields?
     - (other stuff)
 - Is it necessary to assert 'NOT NULL' for what is declared as a key in SQL?
-- Meaning of `ON DELETE RESTRICT ON DELETE CASCADE`? DONT NEED TO LEARN IT, BUT LOOK IT UP
+- Meaning of `ON DELETE RESTRICT ON DELETE CASCADE`:
+    - Former: If the REFERENCE is deleted, it fails
+    - Latter: If the REFERENCE is deleted, it updates the current table
+    - `UPDATE` refers to when the data is altered
 - SUPPOSEDLY partial keys are underlined in crow's foot notation
 - Rho symbol slide 22 Lec 7
 - So in Lec 7 you do rho(ANS(renames)...) but lec 8 you do renaming prior to the cross-product. What's better?
