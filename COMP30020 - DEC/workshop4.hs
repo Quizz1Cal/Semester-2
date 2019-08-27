@@ -19,16 +19,13 @@ Sort using a BST.
 
 bst_sorter :: Ord a => [a] -> [a]
 bst_sorter [] = []
-bst_sorter xs = tree_sorter xs Leaf
+bst_sorter xs = inOrder $ construct_tree xs
+  where 
+    inOrder Leaf = []
+    inOrder (Node v l r) = inOrder l ++ v : inOrder r    
 
-tree_sorter :: Ord a => [a] -> Tree a -> [a]
-tree_sorter xs tree = case tree of
-    Leaf -> reverse xs
-    otherwise -> 
-        let new = smallest tree
-            nexttree = pop tree
-        in tree_sorter (new:xs) nexttree
-    
+construct_tree :: Ord a => [a] -> Tree a
+construct_tree xs = foldr insert_tree Leaf xs
 
 -- Inserts into a BST. <= , > structure.
 insert_tree :: Ord a => a -> Tree a -> Tree a
@@ -39,26 +36,6 @@ insert_tree x tree =
             if x <= val
             then Node val (insert_tree x lt) rt
             else Node val lt $ insert_tree x rt
-
--- Extract smallest element via inorder
--- Assumes tree is non-empty
-smallest :: Ord a => Tree a -> a
-smallest (Node val lt rt) 
-    | lt == Leaf = val
-    | otherwise = smallest lt
-
--- For iterated popping
-popn :: Ord a => Int -> Tree a -> Tree a
-popn n tree = foldr ($) tree $ replicate n pop
-
--- Removes smallest element
-pop :: Ord a => Tree a -> Tree a
-pop tree =
-    case tree of
-        Node val lt@(Node lower _ _) rt -> 
-            Node val (pop lt) rt
-        Node val Leaf rt -> rt
-        otherwise -> Leaf
 
 tree = Node 4 (Node 2 Leaf Leaf) (Node 5 Leaf (Node 7 Leaf Leaf))
 
@@ -91,3 +68,9 @@ testformer :: Num a => [a] -> (a,a,a)
 testformer xs = 
     let (x:y:z:[]) = foldr (zipWith (+)) [0,0,0] $ map (\x -> [1,x,x^2]) xs
     in (x,y,z)
+
+-- Better
+stats2 [] = (0,0,0)
+stats2 (n:ns) =
+  let (l,s,sq) = stats2 ns
+  in (l+1, s+n, sq+n*n)

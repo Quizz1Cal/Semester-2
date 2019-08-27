@@ -489,7 +489,19 @@ Note the pattern matching in  `dot xs ys = sum [x*y | (x, y) <- zip xs ys]`
 
 ## Laziness
 
-Haskell only computes ranges of a list/function when absolutely required.
+To be **lazy** means an expression is only evaluated when results are needed.
+
+To be **non-strict** means that you reduce (apply) operations from the outside in, which can render some code useless/unevaluated; expressions can have a value even if some subexpression don't.
+
+Haskell is **non-strict** but not always lazy. For example, pattern matches forces the inspection of an element and hence forces strictness.
+
+The process of determining what to/not to evaluate is computational money - programs should be optimised so that only what is used, is strictly evaluated.
+
+### Strictness
+
+Whether a value will be evaluated always. If you have to inspect the value, chances are it's strict.
+
+
 
 TODO.
 

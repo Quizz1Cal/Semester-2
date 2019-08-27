@@ -418,20 +418,26 @@ Combines two relations by merging the rows of the inputs so that the final relat
 - **Data Control Language (DCL)**: Controls access to database. `GRANT, REVOKE`
 - Other: Administer database, transaction control
 
+**Operators**:
+- Comparators: `=,<,>,<=,=>,<> OR !=` (last bit dep. on DBMS)
+- Logic: `AND, NOT, OR`
+- Set: `UNION, INTERSECT, [UNION/INTERSECT] ALL` (ALL forces duplicates)
+    - Can't use Intersects in MYSQL
+- Set Comparison: `IN/NOT IN`, `ANY, ALL, EXISTS`
+    - Note often that `[Main] where ID IN [SELECT ID FROM Other WHERE cond]` == `[Main] NATURAL JOIN Other WHERE cond`
+
 ## Common Commands
 
 ```SQL
-INSERT INTO Customer 
-    (CustFirstName, otherCols...) -- If you exclude, ALL columns need entry
-    VALUES ("Peter", ...);
 
--- NULL means ...
+-- NOTE: Case INsensitive
 
 -- Select is equivalent to PROJECT in SQL. No removal of dupes so
-SELECT * from Table;
+SELECT * from Table as ALIAS;
 SELECT DISTINCT <rows,...> FROM <Table>;
 
 ... WHERE Field LIKE "<annoying REG_EXP....>" -- Regular expressions
+... WHERE Field IN (subquery)
 
 SELECT [ALL|DISTINCT]                           -- Rows/calc'd fields. DISTINCT to discard dupes
     FROM <tables to cross product,...>          -- Source
@@ -452,7 +458,7 @@ SELECT COUNT(Field) FROM Table GROUP BY OtherField -- SELECTS from EACH GROUP an
 ANY (), ALL (), IN, NOT IN
 
 SELECT AVG(Balance) 
-FROM Source1, Source2 -- CROSS-PRODUCT
+FROM Source1 as Alias1, Source2 as Alias2 -- CROSS-PRODUCT
 GROUP BY Field
 HAVING AVG(Balance) > <some_num>;
 
@@ -472,7 +478,7 @@ SELECT ... OFFSET 5;  -- Drop first 5 output
 ### Joins in SQL
 
 ```SQL
--- Inner AKA Equi. An AND
+-- Inner AKA Equi-Join. An AND with condition
 "NOTE THE SUBSCRIPTING FOR DIFFERENT SOURCE, SAME COLNAME"
 SELECT ... FROM Customer INNER JOIN Account
     ON Customer.CustomerID = Account.CustomerID;
@@ -484,11 +490,79 @@ SELECT ... FROM Customer NATURAL JOIN Account;
 
 -- Outer join.
 -- This is an OR operation, The DIRECTION you specify who MUST appear in the join. E.g. a LEFT JOIN has all in left, with potentially null matches from RIGHT.
-SELECT ... FROM Customer [LEFT|RIGHT] OUTER JOIN Account
+SELECT ... FROM Customer [LEFT|RIGHT|FULL] OUTER JOIN Account
     ON <condition> ... ;
 ```
 
 You can union tables through `Table1 <all the code> UNION Table2 <moarcode>`
+
+### More Advanced DML
+
+**Query Nesting**: Another select query within some other query, e.g. for a set test.
+
+### More Advanced DDL
+
+#$## Views
+
+These are relations NOT in the conceptual/logical model, but are made available to the user as a virtual relation.
+- Hide query complexity
+- Hide data from users
+
+To create them, rather than `CREATE TABLE`, just do `CREATE VIEW`.
+
+```SQL
+-- Insertion. Table must already exist
+-- REPLACE == INSERT with the power to override
+INSERT INTO Customer 
+    (CustFirstName, otherCols...) -- If you exclude, ALL columns need entry
+    VALUES ("Peter", ...);
+
+-- Update an existing table
+UPDATE Hourly
+    SET Col = Col*1.10
+    WHERE cond; -- This way you don't update whole table
+
+    -- Use of the 'if' statement
+    SET Col2 = 
+        CASE
+            WHEN ...
+            THEN ...
+            ELSE ...
+        END;
+
+-- DELETE
+DELETE FROM Employee; -- KILLS ALL
+    WHERE ...; -- Be safe
+
+-- ALTER: Add or remove attributes
+ALTER TABLE Table [ADD|DROP] ....
+
+-- RENAME TABLE
+RENAME TABLE Table1 TO BetterName
+```
+
+```SQL
+-- Lecture 9 Practice
+
+-- ME
+SELECT Phone FROM Instructor
+NATURAL JOIN Stream
+INNER JOIN Course
+ON Cost > 10000
+NATURAL JOIN StudentStream
+INNER JOIN Student
+ON StudentID = 202;
+
+Select Phone
+FROM Instructor as I, Stream as S, Course as C, StudentStream as SS
+WHERE
+I.InstructorID = S.InstructorID AND
+S.CourseID = C.CourseID AND
+SS.StreamID = S.StreamID AND
+StudentID = 202 AND
+Cost > 10000;
+
+```
 
 ### Datatypes
 
@@ -501,12 +575,6 @@ You can union tables through `Table1 <all the code> UNION Table2 <moarcode>`
 - `DOUBLE`, has round error just like C
 - `DECIMAL(n,p)` has n total digits and p decimal places. NO ROUND ERROR
 - `DATE`, `YEAR`, `TIME`, `DATETIME` has formats `YYYY-MM-DD`, `YYYY`, `HH:MM:SS` and `YYYY-MM-DD HH:MM:SS` respectively. VERY precise
-
-### Views
-
-These are relations NOT in the conceptual/logical model, but are made available to the user as a virtual relation.
-
-To create them, rather than `CREATE TABLE`, just do `CREATE VIEW`.
 
 # Storage and Indexing (UNOFFICIAL)
 
@@ -522,16 +590,29 @@ Any DBMS must support:
 - **Sorted Files**: Records sorted by some condition. Similar LL structure BUT pages/records are ordered.
     - +: Good where records are pulled in some order, retrieving some range
     - +: Fast search (binary)
-- **Index File Organisations**: Special DS.
+- **Index File Organisations**: Special DS, has the fastest retrival in some order.
 
-An **index** on a file is a DS built on top of data pages.
-- Stores pointers to a range of data entries (any subset of fields), which in turn link to the data records themselves
+An **index** on a file is a DS built on top of data pages. It is located/stored elsewhere, such as an index file, containing a collection of *data entries*.
+- Built over *search key fields* e.g. Department Name. CAN have many
+- Helps to speed up searches on these fields as it stores pointers to a range of data entries (any subset of fields), which in turn link to the data records themselves
 
-#### AND THEN IT GETS A BIT TECHNICY AND I'LL ATTACK IT NEXT WEEK OR SOMETHING
+### Types of Index
+- Clustered vs Unclustered: Order of data records matches order of index data entries (I.e. are the small things proximal or sparsely spread in the file?)
+    - Can only have one search key combination clustered (forces all others to be unsorted)
+    - Always cheaper (range) search/retrieval if clustered, but expensive to maintain
+        - Clustered: Costs **# pages with matches**
+        - Unclustered: Costs **# entries matched**
+- Primary vs Secondary: Includes the table's primary key, secondary otherwise.
+    - Primary never contains duplicates, but secondary can.
+- Single vs Composite Key: Whether the index is constructed of one or more search keys
+    - Easier search on composite conditions
+- Indexing Techniques:
+    - **Tree-based**: Uses a binary B+ tree, (no need to sort files for this), nodes point to lower levels. Leaves with data entries sorted by s.k values. GREAT FOR RANGE
+    - **Hash-based**: Index is a collection of buckets; function maps search key to the bucket. IDEAL FOR EQUALITY
 
 ## Comparing Heap/Sorted Files
 
-Use **disk I/Os** to measure performance.
+Use **disk I/Os** to measure performance. One cost per page access.
 
 ### TABLE OF COMPARISON
 
