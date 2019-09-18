@@ -92,8 +92,6 @@ Key fields:
 - *unique*: Is the field unique
 - *Description*: Useful info on attribute to designer/devprs e.g. attr sizes, valid values etc.
 
-### Database Planning
-
 # Lecture 3: ER Modelling Introduction
 
 ## ER Model Basics
@@ -213,7 +211,7 @@ FOREIGN KEY (sid) REFERENCES Students ) -- To say that sid in Students is a fore
 
 Conceptual: ER Diagram >>> Logical: "Employee(_ssn_, name, age)" (ssn underlined). 
 - Multi-valued & composite attributes need flattening (e.g. `home_num, work_num`, `postcode`, `street_name`, `street_num`) OR a lookup table
-    - **Lookup table**: store multi-valued attributes as an instance in a weak entity. CON of this would be the need to 'JOIN' later on. **TODO: PRETTY SURE THIS IS LOOKUP TABLE REFERRED TO**
+    - **Lookup table**: store multi-valued attributes as an instance in a weak entity. CON of this would be the need to 'JOIN' later on.
 - When NOT dealing with many-to-many relationship sets, no new relation is necessary (but still usable). "The primary key(s) from the 'many' becomes a foreign, non-primary key in the 'one'" (usually NOT right next to the primary keys to distinguish its role as a foreign key)
     - E.g. Each department has one manager; the manager is MANY because one can manage many depts, but NOT the other way. So the manager's keys are put in department.
 - For total participation, include `NOT NULL` next to the relevant field
@@ -222,7 +220,7 @@ Conceptual: ER Diagram >>> Logical: "Employee(_ssn_, name, age)" (ssn underlined
 - When dealing with many-to-many relationship sets, a new relation must be made, whose attributes must include (somewhat intuitively):
     1. Keys for each participating entity set as foreign keys (forms a superkey for the relation)
     2. All descriptive attributes (e.g. start/end date of relationship)
-    - E.g. Employee(...), Department(...), Works_In(ssn_u, did_u, since). The latter is called an **associative entity**. Note the keys of the connecting entities become the *primary foreign key* (set)
+    - E.g. Employee(...), Department(...), Works_In(ssn_u, did_u, since). The latter is called an **associative entity**. Note the keys of the connecting entities become *primary foreign key* (set) but there may be other keys necessary and so is not necessarily a identifying relationship.
 
 **NOTE**: PK are underlined, FK are underlined and italic, PFK are underlined and bold.
 
@@ -265,11 +263,11 @@ Finally actual instances are defined, where an **Instance** is an actual table w
 
 # Lecture 5: Workbench
 
-## ER Modelling - Notations
+## ER Modelling - Notations (Conceptual and Physical)
 - LIGHTBULB = key
 - MANY LIGHTBULBS = each one a partial identifier, together forms the key
 - NOT NULL = Blue diamond, NULL if empty diamond
-- RED = Foreign key **I THINK. TODO**
+- RED = Foreign key
 - TODO: **CHECK REFERENTIAL INTEGRITY**
 - [someAttr] is a derived (i.e. calculated field) *AND IS OMITTED AT PHYSICAL DESIGN*
 - (someAttr) is multi-valued
@@ -426,6 +424,23 @@ Combines two relations by merging the rows of the inputs so that the final relat
 - Set Comparison: `IN/NOT IN`, `ANY, ALL, EXISTS`
     - Note often that `[Main] where ID IN [SELECT ID FROM Other WHERE cond]` == `[Main] NATURAL JOIN Other WHERE cond`
 
+**'Regex'**:
+- Use "%" as a wildcard
+
+**Formatting**:
+- Use `ROUND(X,D)` (outputs num) and `FORMAT(X,D)` (outputs str), D is number of d.p.
+
+**WARNING**: Single quotes denote strings.
+
+Use `IN` if multiple results (one column) expected from a subquery. Use `=` if one result (one column) expected.
+
+Note that `NATURAL JOIN` will infer identically named columns as the ones to join on. If this automatic behaviour is undesired, must use `INNER JOIN ... ON (condition)`.
+
+Can do `COUNT(DISTINCT <row>)`
+
+### Curious Commands
+- MONTH(date) yields a STRING integer
+
 ## Common Commands
 
 ```SQL
@@ -439,6 +454,10 @@ SELECT DISTINCT <rows,...> FROM <Table>;
 ... WHERE Field LIKE "<annoying REG_EXP....>" -- Regular expressions
 ... WHERE Field IN (subquery)
 
+
+-- ORDER IS IMPORTANT
+-- General format
+-- Aliases DON'T WORK in WHERE
 SELECT [ALL|DISTINCT]                           -- Rows/calc'd fields. DISTINCT to discard dupes
     FROM <tables to cross product,...>          -- Source
     <JOIN SPECIFICATIONS>
@@ -448,11 +467,11 @@ SELECT [ALL|DISTINCT]                           -- Rows/calc'd fields. DISTINCT 
     ORDER BY {col_name|expr|position} [ASC|DESC, ..] -- Sorting 
     LIMIT {[offset, ] row_count | row_count OFFSET offset}; -- Output constriction
 
--- ORDER IS IMPORTANT
-
--- Some aggregators. Not that excluding count, they all ignore nulls
+-- Some non-aggregators (they just map data)
+SQRT(), CONCAT(field1, ' ', ...) -- (str concat)
+-- Some aggregators. Not that excluding count, they all ignore nulls. THESE SUMMARISE RESULTS
 AVG(), MIN(), MAX(), COUNT(<Field>), SUM(*) etc.. are nice
-SELECT COUNT(Field) FROM Table GROUP BY OtherField -- SELECTS from EACH GROUP and collates
+SELECT COUNT(Field) as Totals FROM Table GROUP BY OtherField -- SELECTS from EACH GROUP and collates
 
 -- Comparators
 ANY (), ALL (), IN, NOT IN
@@ -490,7 +509,8 @@ SELECT ... FROM Customer NATURAL JOIN Account;
 
 -- Outer join.
 -- This is an OR operation, The DIRECTION you specify who MUST appear in the join. E.g. a LEFT JOIN has all in left, with potentially null matches from RIGHT.
-SELECT ... FROM Customer [LEFT|RIGHT|FULL] OUTER JOIN Account
+SELECT ... FROM Customer 
+[LEFT|RIGHT|FULL] JOIN Account
     ON <condition> ... ;
 ```
 
@@ -502,7 +522,7 @@ You can union tables through `Table1 <all the code> UNION Table2 <moarcode>`
 
 ### More Advanced DDL
 
-#$## Views
+### Views
 
 These are relations NOT in the conceptual/logical model, but are made available to the user as a virtual relation.
 - Hide query complexity
@@ -562,6 +582,23 @@ SS.StreamID = S.StreamID AND
 StudentID = 202 AND
 Cost > 10000;
 
+```
+
+#### Advanced
+
+Question: "List the first and last names of bosses who supervise more than two staff and who also manage a department."
+
+**NOTE**: The aliasing scope is the ENTIRE query even if the aliasing is done in Joins.
+
+```SQL
+SELECT boss.employeeid, boss.firstname, boss.lastname,
+ COUNT(emp.employeeid) AS employee_count
+FROM employee AS emp
+INNER JOIN employee AS boss ON emp.bossid = boss.employeeid
+WHERE boss.employeeid IN (SELECT managerid
+ FROM department)
+GROUP BY boss.employeeid
+HAVING COUNT(emp.employeeid) > 2;
 ```
 
 ### Datatypes
