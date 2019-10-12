@@ -613,45 +613,53 @@ HAVING COUNT(emp.employeeid) > 2;
 - `DECIMAL(n,p)` has n total digits and p decimal places. NO ROUND ERROR
 - `DATE`, `YEAR`, `TIME`, `DATETIME` has formats `YYYY-MM-DD`, `YYYY`, `HH:MM:SS` and `YYYY-MM-DD HH:MM:SS` respectively. VERY precise
 
-# Storage and Indexing (UNOFFICIAL)
+# Storage and Indexing
 
 Any DBMS must support:
 - Insertion/deletion/modification of records
-- Reading records
+- Reading records (specified with some record id)
 - Scanning records
 
 **File**: Collection of pages with a collection of records.
-- **Heap File**: Records unordered. Alloc/deallocates disk pages as the file grows/shrinks. Can be structured with pointers much like a LL
+- **Heap File**: Records unordered. Alloc/deallocates *disk pages* as the file grows/shrinks. Can be structured with pointers much like a LL
     - +: Good when records are accessed uniformly/altogether.
     - +: Fast insert
 - **Sorted Files**: Records sorted by some condition. Similar LL structure BUT pages/records are ordered.
     - +: Good where records are pulled in some order, retrieving some range
-    - +: Fast search (binary)
+    - +: Fast search (binary) on range queries (log2 B); hard to maintain (due to resorting in insert)
 - **Index File Organisations**: Special DS, has the fastest retrival in some order.
 
+**NOTE**: The data is typically stored in pages on Hard Disks (HDD), which is processed/analyzed in memory (RAM).
+
 An **index** on a file is a DS built on top of data pages. It is located/stored elsewhere, such as an index file, containing a collection of *data entries*.
-- Built over *search key fields* e.g. Department Name. CAN have many
+- Built over *search key fields* e.g. Department Name. CAN have many (e.g. a subset of features)
 - Helps to speed up searches on these fields as it stores pointers to a range of data entries (any subset of fields), which in turn link to the data records themselves
 
 ### Types of Index
 - Clustered vs Unclustered: Order of data records matches order of index data entries (I.e. are the small things proximal or sparsely spread in the file?)
+    - IDEA: Already sorted, just have an index to aid lookup
     - Can only have one search key combination clustered (forces all others to be unsorted)
-    - Always cheaper (range) search/retrieval if clustered, but expensive to maintain
-        - Clustered: Costs **# pages with matches**
-        - Unclustered: Costs **# entries matched**
-- Primary vs Secondary: Includes the table's primary key, secondary otherwise.
+    - Always cheaper (range) search/retrieval if clustered, but expensive to maintain (need to reorganize files to do so)
+        - Clustered: Roughly costs **# pages with matches**
+        - Unclustered: Roughly costs **# entries matched**
+- Primary vs Secondary: Includes the table's primary key; secondary otherwise.
     - Primary never contains duplicates, but secondary can.
 - Single vs Composite Key: Whether the index is constructed of one or more search keys
+    - Data entries in INDEX sorted by search keys
     - Easier search on composite conditions
 - Indexing Techniques:
-    - **Tree-based**: Uses a binary B+ tree, (no need to sort files for this), nodes point to lower levels. Leaves with data entries sorted by s.k values. GREAT FOR RANGE
-    - **Hash-based**: Index is a collection of buckets; function maps search key to the bucket. IDEAL FOR EQUALITY
+    - **Tree-based**: (What we've done so far): Uses a binary (B+) tree, (no need to sort files for this), nodes point to lower levels (left is low, right is high). Leaves with data entries sorted by s.k values. GREAT FOR RANGE, ALSO OK FOR EQUALITY
+        - Height typically small, 2-4 I/O
+        - **B+ trees**: Store data in LEAVES only; all internal nodes store keys that map to children. Note that the DATA is still linked files
+    - **Hash-based**: Index is a collection of buckets; function maps search key to the bucket. IDEAL FOR EQUALITY (ONLY)
+        - Height typically small, 1.2 I/O operations
 
 ## Comparing Heap/Sorted Files
 
 Use **disk I/Os** to measure performance. One cost per page access.
+- E.g. accessing a file of 100 records in 10 pages is 10 I/O in cost
 
-### TABLE OF COMPARISON
+### TABLE OF COST COMPARISON
 
 Operation | Heap File | Sorted File
 Scan | B | B
@@ -660,14 +668,458 @@ Range Search | B | log2B + #matches
 Insert | 2 | log2B + 2*(B/2)
 Delete | 0.5B + 1 | log2B + 2*(B/2)
 
-# Query Processing
-## Selection
-## Projection
-## Joins
-# Query Optimisation
-## Normalisation
-# Database Administration
-## Transactions
+# Lecture 11/12: Query Processing
+
+**Query workflow idea**:
+- Query parser interprets SQL/query (maybe rewrite for machine readability)
+- Query optimisers create plans and cost estimates
+    - Communicates with catalog manager (with access to schema/stats)
+- This yields a plan evaluator
+
+## Selection (sigma) Implementation
+
+Optimal selection depends on
+- *available indexes/access paths*
+- *expected result size* (# tuples or # pages) approx. ~ size(relation) * PRODUCT(reduction factors)
+
+A **reduction factor/selectivity** estimates the prop. of relation will qualify the condition/predicate. 
+- Estimated by optimiser
+
+### Ultimate Approach to Selections
+1. Find cheapest access path (see alternatives below)
+2. Retrieve tuples using it
+    - Where predicates MATCH this index, the # tuples retrieved is reduced (hence, cost saved)
+3. Apply predicates that DON'T match index later on
+    - Does NOT affect # tuples/pages fetched; a post-retrieval task
+
+Alternatives for simple selection:
+- NO INDEX, UNSORTED: Cost = N (NPages(R))
+- NO INDEX, SORTED: Cost = log2(N) + (RF*N) i.e. log2(N) + result_size
+- INDEX ON SELECTION ATTR: See below
+
+### Using an Index for Selections
+- Cost: 
+    - Clustered: RFs * (NPages(I) + NPages(R))
+    - Unclustered: RFs * (NPages(I) + NTuples(R))
+- Steps:
+    1. Find qualifying data ENTRIES (typically small) (RF) & go through one-by-one and look up data records (NPages(I))
+    2. Retrieve data records (either pages, or tuples, dep. on clustering)
+
+### General Selection Conditions
+- A B-tree index matches predicates that are a PREFIX of the search key (**matching predicates/primary conjuncts**)
+    - E.g. <a,b,c> index can do (a,b,c), (a,b) or (a)
+    - E.g. <a,b,c> can do (a=5,b=3) but NOT (b=3)
+    - HENCE only RF(predicates in the prefix) can be used to det. cost
+
+## Projection (pi) Implementation
+
+Motivation for algorithm: extracting attributes is easy: removing duplicates (to remain a true relation) is the task to optimise.
+
+### Sort-Based Projection
+(Basic) Steps: 
+    1. Scan R, extract necessary attributes
+    2. Sort result set (typically external merge sort)
+    3. Remove *adjacent* duplicates
+
+**Total Cost**:
+- ReadTable (keeping only proj. attrs) = NPages(R)
+- WriteProjectedPages (wriing pages wt projected attrs to disk) = NPages(R)*PF
+- SortingCost (sorting with proj. attrs with external sort) = 2 * NumPasses * ReadProjectedPages
+    - **TODO**: HOW TF DOES 20 MEMORY PAGES LEAD TO 2 PASSES
+    - The 2 comes from the fact it's # reads + # writes
+- ReadProjectedPages (read sorted, proj. pages to discard adj. dupes)
+
+**Projection Factor** measures how much we are projecting (e.g. keepin 1/4 of all attrs)
+
+**External merge sort**: Sort on large data consisting of several passes and use of **buffer pages**
+- Sort run: Make each B pages sorted
+- Merge run: Make multiple pages, in order to merge runs
+    - At pass K, produce runs of length B(B-1)^(K-1)
+    **WE WILL BE TOLD # PASSES P**
+    - **TODO**: VERY CONFUSING. Wiki helps a bit but still...
+
+### Hash-Based Projection
+(Basic) Steps:
+1. Scan R & extract necessary attrs
+2. Hash into BUCKETS:
+    - Apply h1 to choose one of B output buffers
+3. Remove adjacent duples from a bucket
+
+**TODO**: It says B above, but acc. diagram it's ONE input bucket and B-1 hashing buckets.
+
+For External Hashing:
+1. Partition data into B partitions with h1
+    - Read R with ONE input buffer
+    - For each tuple: discard unwanted attrs, and apply h1 to map to a B-1 *output buffer* (main memory)
+        - Note that tuples in diff buckets are necessarily distinct by nature of hash
+2. Load each partition, hash with h2 and eliminate duplicates
+    - For each partition: Read and build an in-memory hash table using h2 (<> h1), discarding duplicates
+    - If partition not fit in memory: apply hash-based projection algorithms (NOT FOR US)
+
+**Cost**:
+- ReadTable (read and project) = NPages(R)
+- WriteProjectedPages (h1-partitioning ('buckets'))= NPages(R)*PF
+- ReadProjectedPages (h2-partitioning and discard dupes) = NPages(R)*PF
+- Overall: NPages(R) * (1+2*PF)
+
+<!---Lecture 12--->
+## Join (|X|) Implementation
+NOTE: Expensive.
+
+### Nested loops Join
+
+#### Simple NLJ (SNLJ)
+IDEA: 
+- Foreach tuple r in R do
+    - Foreach tuple s in S do
+        - If rj==sj then add <r,s> to result
+
+**Cost(SNLJ)** = NPages(Outer) + NTuples(Outer)*NPages(Inner)
+
+#### Page-Oriented NLJ (PNLJ, NLJ)
+IDEA:
+```Pseudocode
+Foreach page b_R in R do
+  Foreach page b_S in S do
+    Foreach tuple r in b_R do
+      Foreach tuple s in b_S do
+        if rj == sj then add <r.s> to result
+```
+
+**Cost(PNLJ)** = NPages(Outer) + NPages(Outer)*NPages(Inner)
+- **TODO**: Why no tuple cost mentioned here?
+
+#### Block NLJ (BNLJ)
+An alternative approach to PNLJ (which fails to exploit extra memory buffers):
+- Use one page as an *input buffer* for scanning S
+- Use on page as the *output buffer*
+- Use rest to hold ONE block of R (a chunk read)
+
+Algorithm: 
+Foreach Rblock B, foreach tuple r in B, foreach tuple s in S, where rj==sj add <r,s> to result.
+
+**Cost (BNLJ)** = NPages(Outer) + NBlocks(Outer) * NPages(Inner)
+- NBlocks(Outer) = ceil(NPages(Outer) / (B-2)) (B is # buffer pages)
+
+### Sort-Merge Join (SMJ)
+IDEA: Sort R and S on the join column, THEN scan to do a merge (on join column) and output result tuples.
+- Sorted R is scanned ONCE
+- Each S group of the same key values is scanned ONCE per matching R tuples (typically, sorted S scanned ONCE too)
+
+Uses:
+- One/both outputs already sorted in the join attr(s)
+- Output is required to be sorted on join attr(s)
+
+**Cost (SMJ)** = Sort(O) + Sort(I) + NPages(O) + NPages(I)
+- First two for sorting, second two for merging (cost)
+- Sort(R) = External Sort Cost = 2 * NumPasses * NPages(R)
+
+### Hash Join (HJ)
+IDEA: Partition BOTH relations with h -> only tuples in same partition can match. Then foreach partition of R, hash with h2 (<> h), scan matching partition of S and probe for matches (after applying h2)
+
+**Cost (HJ)** = 3* NPages(O) + 3* NPages(I)
+- In partitioning, read+write (contributes 2); in matching, read both (once)
+
+### General Join Conditions
+For equalities over several attributes:
+- For SMJ and HJ, sort/partition on combination of the TWO join columns
+
+Inequality conditions (e.g. R.name < S.name):
+- CANNOT use HJ (due to use of hashing)
+- CANNOT use SMJ **TODO**: Don't know why
+- Use BNLJ
+
+<!--- Lecture 13 --->
+# Lecture 13/14: Query Optimisation
+GOAL: Find the execution strategy (choice of algorithms, etc.) with the lowest cost.
+
+**Query Plan**: A tree, with relational algebra operators as nodes, labelled with a choice of algorithm.
+- Leaves are the relations
+- Example nodes: \pi_{attrs}, \sigma_{conditions}, |X|_{conditions}
+- Example labels: On-the-fly, Heap scan, names for algorithms
+
+**Optimisation Steps**:
+1. Break into query blocks.
+    - **Query block**: Any statement starting with select; a unit of optimisation
+    - Typically optimise innermost block and work outwards
+2. Convert each block into relational algebra
+    - Just like in Lecture 7, e.g. `\pi_{S.sid}(\sigma_{B.color='red'}(S |x| R |x| B))`
+3. Foreach block, consider alternative query plans
+4. Plan with lowest estimated cost selected
+
+## Relational Algebra Equivalences
+- **Selection Cascading**: A sigma on N conditions is equivalent to N nested selections
+- **Selection Commuting**: Nested selections can be composed in any order
+- **Projection Cascading**: Projection on a_1 is equivalent to composing on projections of smaller and smaller supersets that converge to a_1.
+    -  `\pi_{a_1}(R)\equiv\pi_{a_1}(\dots(\pi_{a_n}(R)))` where `a_i\subseteq a_{i+1} \forall i\in\{1,\dots,n-1\}`
+- **Proj/Selection Commuting**: Proj/selections can be composed in any order IF the selection condition only uses attributes retained by the projection.
+- **Join Associativity**: Joins are associative (always) (any composition)
+- **Join Commutativity**: Joins are commutative (always) (any choice of inner/outer)
+- **Two-sided Selection/Cross-Product**: Selections on a cross-product are equivalent to joins with that condition.
+- **One-sided Selection/Join**: Selections on ONE side of any join (even with conditions) can be applied to that side before OR after the join.
+- **Projection/Join**: Projecting on a join is equivalent if you first project on the relations (whilst retaining join attrs), then project after the join. I.e. you can trim the fat before joining, but you still have to choose afterwards.
+    - NOTE: Ensure that the superset containing BOTH projection attrs and the join condition attrs is used if done prior to join (otherwise you can't actually do the join)
+
+## Cost Estimation
+For each plan considered:
+- Estimate size of result (for each operation in tree)
+    - Exploit information a/b input relation (from system catalogs) & apply rules
+- Estimate cost of operations in plan tree
+    - Depends on input cardinalities (row counts)
+    - This is done with the discussions from **query processing**
+    - Use these to calculate cost of entire plans
+
+**Catalogs**: Information on the relations and indexes involved. Often contain (at least) the following *statistics*:
+- NTuples, NPages, for each relation
+- NKeys for indexes (or relation attrs)
+- Low/High key values for indexes (or relation attrs)
+- Height(I) of index for each tree index
+- NPages(I) for each tree index
+
+### Result Size Estimation
+- *Single Table*: ResultSize = NTuples(R) * PRODUCT(RF's)
+- *Joins on k tables*: ResultSize = PRODUCT(NTuples(Rj)) * PRODUCT(RF's)
+    - **TODO**: Nested product or independent products? (big difference)
+- I.e. maximum NTuples from a result is the product of cardinalities (size) of relations in `FROM`; but reduction factors on `WHERE` predicates reflects their impact on reducing result size (hence, called 'selectivity')
+
+**RF Calculations**:
+- Col = Val, do 1 / NKeys(col) (NOTE: assumes uniformity)
+- Col > Value, do (High(Col) - Value) / (High(Col) - Low(Col)) (NOTE: again assumes uniformly spread)
+- Col < Value, do (val - Low(Col)) / (High(Col) - Low(Col)) = 1 - (above)
+- ColA = ColB (for joins), do 1 / MAX(NKeys(ColA), NKeys(ColB))
+- Without any info on NKeys or interval range, use magic number RF = 0.1
+
+## Plan Enumeration
+
+### Single-Relation Plans
+- Each *available* access path (file scan/index) is considered - choose lowest estimated cost
+    - Heap scan is ALWAYS one alternative
+    - ALT: Each index (as long as it matches selection predicates)
+- Other operations can be performed on top of access paths but typically DON'T incur additional cost as they are done on-the-fly
+
+Examples:
+- Heap scan: NPages(R)
+- Index on primary key: 
+    - Cost(B+Tree) = Height(I)+1
+    - Cost(HashIndex) = ProbeCost(I) + 1 (here, about 1.2)
+- Clustered index on one or more predicates
+    - Cost(B+Tree) = PRODUCT(RF's) * (NPages(I) + NPages(R))
+    - Cost(HashIndex) = PRODUCT(RF's) * NPages(R) * 2.2 (p. sure this is ProbeCost(I)+1)
+- Non-clustered index on one or more predicates
+    - Cost(B+tree) = PRODUCT(RF's) * (NPages(I) + NTuples(R))
+    - Cost(HashIndex) = PRODUCT(RF's) * NTuples(R) * 2.2
+
+**NOTE/REMEMBER**: If the index is NOT related to the condition you'll have to check all entries - in other words, RF = 1.
+
+**TODO**: Don't understand the exact derivation of all formulae in Slide 6 Lec 14.
+
+### Multi-Relation Plans
+1. Select order of relations (N!)
+2. For each join, select an algorithm
+3. For each input relation, select an access method
+4. (from all available paths, choose that with least est. cost)
+
+This understandably yields a large search space.
+- In System R (first DBMS), reduce by asserting *only left-deep join trees are considered*
+    - generates fully pipelined plans, where intermediate results are NOT written to temp files; they are immediately joined with another relation, etc.
+    - This means you don't have to count the reading of previously joined data (pipelining) (e.g. in ONLJ, remove one NPages(Outer); in HJ, only do 2* NPages(Outer) instead of 3*NPages(Outer) as it's already read)
+- Can also prune any plans with cross-products (if there are conditions to be met), as this is less efficient then first applying those conditions in a join
+- **TODO**: Why 40000 and not 100000 on Slide 14 lec 14? NKeys is NTuples coz it's id's right? 
+- **TODO**: Motivate why the structure chosen was used in Lec 14; it is because B had the least # Pages, or just that only R |X| S was known?s
+
+
+# Lecture 15: Normalisation
+
+Denormalised data is essentially the join of different entities in one database. For example, a Student entity that has their course details as part of their record - so many records have identical course details.
+
+Motivation: Data that is not normalised can suffer from:
+- *Insertion Anomaly*: A new 'inner object' cannot be added until another 'outer object' has been recorded 
+- *Deletion Anomaly*: Inner object/data can be wiped from existence upon deletion of an outer object/data
+- *Update Anomaly*: Changes to any inner data (e.g. course details) have to be rippled through the dataset due to repetition
+
+The tradeoff:
+- Normalised relations have
+    - Minimal redundancy
+    - Allows insert, modify/update and delete without error/inconsistency
+    - Poor(er) query speed
+- Denormalised relations have
+    - greater query speed (all un-nested, essentially O(1) access)
+    - Poor(er) update speed
+
+**Normalisation**: A technique used to remove undesired redundancy from databases; breaking one large table into several smaller tables.
+- A relation is **normalised** if all determinants are candidate keys
+- Normalise by isolating non-key determinants into separate tables, recursively (adding foreign keys to link), until the normalisation condition is met for ALL tables.
+- Requires lateral thinking: anything from customer identity to calculated fields needs to be optimised and isolated.
+
+**Functional Dependency (X -> Y)**: In regards to attrs in a relation, a set of attributes X determines a set Y if each value of X associates with one Y. We call any set X a **determinant**
+    - Can consist of *key* and *non-key attributes*
+    - E.g. `employee_id` determines `first_name`, `last_name`, `date_of_birth` etc. but NOT vice-versa
+    - Determinants may not be candidate keys (e.g. `course_name` determines `course_details` but not the student details that form the bulk of the record)
+    - **Partial FD**: An FD between a strict subset of the primary key, and one or more non-key attributes
+    - **Transitive Dependency**: An FD between 2 or more non-key attributes.
+
+**Armstrong's Axioms** denote functional dependencies:
+- `A = (X1,X2,...,Xn)` and `B = (Y1,Y2,...,Yn)`
+- *Reflexivity*: B \subseteq A => A -> B (supersets determine any subsets)
+- *Augmentation*: A -> B => AC -> BC (you can add 'redundant' attrs)
+- *Transitivity*: A -> B, B -> C => A -> C
+
+## Steps in Normalisation
+1. First Normal Form *1NF*: remove repeating groups (keep atomic data)
+    - Removing repetitions: Turn "Order-Item(<u>Order#<\u>, Customer#, (<u>Item#<\u>, Desc, Qty))" into `Order-Item(<u>Order#, Item#<\u>, Desc, Qty)` and `Order(<u>Order#<\u>, Customer#)`
+    - Analogous if a cell had multiple values
+2. Second Normal Form *2NF*: Remove partial dependencies
+    - *IDEA*: A non-key attribute cannot be identified by PART of a composite key. 
+    - So "Order-Item(<u>Order#, Item#<\u>, Desc, Qty)" becomes "Item(<u>Item#<\u>,Desc)" and "Order-Item(<u>Order#, Item#<\u>,Qty)" since you can determine Desc just by Item#
+3. Third Normal Form *3NF*: Remove transitive dependencies
+    - *IDEA*: A non-key attribute cannot be identified by another non-key attribute (this would imply Key -> Attrs -> other-attrs which is inefficient)
+    - So "Employee(<u>Emp#<\u>,Ename, Dept#, Dname)" will become "Employee(<u>Emp#<\u>, Ename, Dept#)" and "Department(<u>Dept#<\u>, Dname)" as Dept# determines Dname (transitive dep.)
+
+# Lecture 16: Guest Lecturing on Adaptive Databases
+
+# Lecture 17: Database Administration
+
+Core aspect of a DA role (which cloud-based DBMS effectively do)
+- **Capacity Planning**: Predicting future load levels and determining cost-effective ways to delay system saturation
+    - In System Design: Consider disk space requirements, transaction thoroughput (traffic)
+    - In Systems Maintenance/Review: Monitor/predict the above
+- **Backup & recovery**: Types of failure, failure responses, types of backups, general protection
+- EXTRA: **Performance Improvement**
+- EXTRA: **Security** (threats, SQL injections etc.)
+
+
+## Capacity Planning (REVIEW CALCULATIONS)
+**To estimate disk space requirements**:
+- Treat database size as sum of ALL table sizes, where size = cardinality * average row width
+    - Row width = sum of datatype sizes
+    - This will differ b/t vendors
+    **TODO**: There was a lot of detail in the slides, unsure if necessary
+    **TODO**: What is 'go-live'?
+
+**To estimate table growth**:
+- Just conduct a system analysis. E.g. if you know that 2 million customers place (on average) 5 orders/month, and each order averages 8 products, then expect:
+    - 2 million customers (total)
+    - 10 million new orders / month
+    - 80 million new OrderItem entries / month
+- Once high-growth areas are determined, can plan to separate disk locations (e.g. might store OrderItem on one disk and the rest elsewhere)
+
+**To estimate transaction load**:
+- Transaction load = PRODUCT(frequency * load(SQL statements)) for all products (informally)
+- Need to consider:
+    - Peak vs Average load (just because you allow 200 chars max for an email, about 66% of that is used on average, so use 66% * 200 in estimation IF truncated)
+    - Acceptable response time
+    - Availability
+
+## Backup & Recovery
+**Backups** are (basically) copies of your data that allows restoration in the event of:
+- Human error, hard/software malfunction, malicious activity, disasters, and government regulation
+
+**Categories of failure**:
+- Statement failure: Syntactically incorrect
+- User Process failure: Process fails (dies, errors)
+- Network failure: Connection b/t DB and user fails
+- User error: User accidentally drops rows/tables/DB
+- Memory failure: Memory fails/corrupts
+- Media failure: Disk failure/corruption/deletion
+
+**Categories of Backups**:
+- Physical:
+    - Raw copies 
+    - Preferably offline DB when backup occurs
+    - Backup is EXACT COPY of directory and files
+    - Backup include logs
+    - Only portable to machines with similar config
+    - To restore: shut down DBMS, copy backup over, restart DBMS
+- Logical:
+    - Backup completed by SQL queries
+    - SLOWER than physical (due to selects)
+    - Output LARGER than physical
+    - No log/config files
+    - Machine independent
+    - Server available during backup
+    - Restore/backup through MySQL / other DBMS
+- Online:
+    - Backups occur whilst 'live'
+    - Clients unaware
+    - Need appropriate locking to ensure integrity
+- Offline:
+    - Occur when database is stopped
+    - SIMPLER
+    - Preferable BUT not always possible due to need to stay online
+- Full: 
+    - The complete DB is backed up (with any categorisation of the above)
+    - Includes everything necessary to get an operational DB in failure
+- Incremental:
+    - Only changes since last backup are backed up (e.g. for many DB, just backup log files)
+    - Restoration: stop database, copy backed up log files to disk, start, and redo log files
+- Offsite:
+    - Data is stored on disk separate from main disks (e.g. CLOUD)
+    - Allows disaster recovery
+
+Basic Backup Policy:
+- Most backup strategies are a combination of full and incremental backups (e.g. full weekly, daily incremental).
+- Should conduct when database load is low
+- If using replication, backup to the mirror database to negate performance concerns to primary
+- TEST backup before you NEED the backup
+
+# Lecture 18: Transactions
+
+**Transaction**: A logical unit of work that must either be entirely completed, or aborted (*indivisible*). 
+    - User-defined
+    - In essence, a sequence of DML statements (manipulation)
+
+**Desired properties (ACID)** (defining a unit of work):
+- Atomicity: Transactions are single, indivisible, logical UOW and ALL must be completed or NONE of them.
+- Consistency: Data constraints must hold post-operation (e.g. PKs, FKS)
+    - This would be broken if transactions were divisible - partial inconsistent states could error in failures
+- Isolation: Data used by one transaction cannot be used in parallel by another until the first completes
+    - Serial execution (a queue)
+- Durability: Complete transactions permanently alter, even in system failure
+
+IN SQL: Use `START TRANSACTION` or `BEGIN` and `COMMIT;` to wrap a series of SQL statements. `ROLLBACK` undoes everything.
+- `UPDATE` helps too...? 
+- A single DML/DDL command that fails halfway through its processing, upon restart, will NOT have changed the DB
+
+**Concurrent Access** (the second problem):
+- **Lost Update Problem**: Concurrent transactions have different ideas of the state (updates made by concurrents are 'lost')
+    - E.g. multiple withdrawals: they'll have different ideas of the final balance
+- **Uncommitted Data Problem** occurs when two transactions execute concurrently * the first is rolled back AFTER the second has already accessed it. 
+    - E.g. cancelling a withdrawal just after someone else started one; they'll read the wrong (lower) balance
+- **Inconsistent Retrieval Problem** occurs when one transaction calculates an aggregate whilst others are updating the data.
+
+Transactions ideally are serializable (appear serial in execution, but allows concurrent execution yielding consistent result). Thus is slow and unrealistic.
+
+**Concurrency Control Methods**:
+- Scheduling r/w operations for concurrent transactions
+- Interleaves operation execution based on CC algorithms (e.g. locking, time-stamping)
+
+**Locking**: Guarantees exclusive use of a data item to a current transaction
+- Forces concurrents to WAIT to ensure consistent data is retrieved
+- **Lock Managers** assign and police the locks used
+- Lock Granularities:
+    - **Database-level**: Locks entire DB, so even if different tables are uesd the transactions are still locked.
+    - **Table-level**: Less strict, but not suitably for highly multi-user DBMSs (or highly dependent systems)
+    - **Page-level**: Uncommon
+    - **Row-level**: Best availability to data, but high overhead. MOST COMMON
+    - **Field-level**: Most flexible, but highest overhead. UNCOMMON
+- Lock types:
+    - **Binary**: Either locked (1) or unlocked (0). Solves LOST UPDATE
+        - ISSUE... **TODO**
+    - **Exclusive**: Access reserved to the locking transaction; important for transactions that intend to write; only possible if no other locks held
+    - **Shared**: Other transactions can read; only okay if transaction wants to READ and no Exclusive lock is held
+
+**Deadlock**: (Permanent) error that occurs where multiple users place locks that prevent either party from completing their transaction, creating a standstill (waits).
+- Solution: Allow simultaneous read AND write; deny READ and WRITE (exclusivity); allow backing out of transactions; prevent cycles
+
+**Alternative CC Methods**:
+- **Timestamp**: Transactions get a global, unique timestamp, which attaches to data accessed. Transactions are allowed access depending on the timestamp.
+- **Optimistic**: Assuming majority of operations DON'T conflict, transactions are free to execute BUT on commit, DBMS checks if anything READ has been altered, and rollbacks anything that doesn't add up
+
+**Transaction Logs** track all updates to data. It contains records for transaction starts, the SQL statements being performed and the impacts, the before/after values, and pointers to prior/next log entries, AND the commit.
+- Allows restoration (just look at the transactions and restore)
+
+**DO THE TRANSACTION DEMONSTRATION**
+
 ## Data Warehousing
 ## Other DBMS
 
@@ -682,9 +1134,10 @@ Delete | 0.5B + 1 | log2B + 2*(B/2)
     - Latter: If the REFERENCE is deleted, it updates the current table
     - `UPDATE` refers to when the data is altered
 - SUPPOSEDLY partial keys are underlined in crow's foot notation
-- Rho symbol slide 22 Lec 7
-- So in Lec 7 you do rho(ANS(renames)...) but lec 8 you do renaming prior to the cross-product. What's better?
+- So in Lec 7 you do rho(ANS(renames)...) but lec 8 you do renaming prior to the cross-product. What's better? WHATEVER
 - CARDINALITY(Cross-Product) = CARD(S1) x CARD(S2)... clarify the meaning
+- Heap Scan vs Unclustered costs: wouldn't a heap scan also incur NTuples cost as well?
+- CRUCIAL: Lec 11 Slide 17 Q3: CHECK ANSWER (i think no)
 
 - TODO: Need to check possibility of duplicates when using joins.
 - TODO: I think the `|` means 'a choice of following - so investigate alternate inputs for the SELECT statements.

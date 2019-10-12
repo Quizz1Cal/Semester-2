@@ -5,6 +5,7 @@
 # Key Ideas:
 - Write code declaratively: write it as if you were checking/asserting the result's correctness, rather than computing it.
 - In general, you don't need to specify when predicates fail; the tradeoff being, you must be exhaustive for success.
+- Each Prolog clause should be a true statement about the predicate it's defining independent of the other clauses.
 
 # Features of Prolog
 - Dynamic typing: do NOT declare types
@@ -139,6 +140,7 @@ Rules are typically added by writing them in a text file (for example rules.pl),
 
 **Terms** are data structures, of the atomic, compound of variable variety. (Datalog doesn't have compound).
 - Atomic terms: Floats, Integers and atoms
+- Integers can be written with `_`; these are ignored, are only for readability.
 
 **Variable terms** are variables; they denote a single unknown term.
 - Start with CAPITAL/_ followed by alphanum or _.
@@ -153,6 +155,8 @@ Rules are typically added by writing them in a text file (for example rules.pl),
 - Syntax is same as an atom, so be careful
 - E.g. `node(leaf, 1, node(leaf, 2, leaf))` for a small tree.
 - E.g. `f(A,A)` (A is variable) is a term with functor `f` and two identical arguments.
+
+Note that the `-` constructor (e.g. `A-B`) is analogous to the use of `,` in Haskell for tuples.
 
 Terms (single or compound) are called **ground terms** when no variables are used and **nonground** otherwise.
 
@@ -195,6 +199,11 @@ To check list membership (is builtin):
 - `member(Elt, List) :- append(_,[Elt|_], List)`
 - ALT: `member2(Elt, [Elt|_]). ... member2(Elt, [_|Rest]) :- member2(Elt, Rest)`
 
+Sorting:
+- `sort(List0, List)` where List is sorted, UNIQUE, List.
+- `msort(List0, List)` where List is sorted, same elements.
+- `keysort(List0, List)` where List0 are *key-value pairs* (`X-Y`) and List sorted by Keys, NOT by values. STABLE SORT
+
 ## Control 'Flow'
 
 ```Prolog
@@ -224,6 +233,92 @@ predicate(...) :- repeat,
                ( "Termination Condition" ),
                !.
 ```
+
+**If -> then ; else** is achieved as `(p -> q ; r)` (a goal). No choicepoint is created; it's either q or r. Great for deterministic code that needs to avoid choicepoints, and many solutions WON'T satisfy p.
+- CON: If `p` has many solutions, only the first is committed to.
+
+```Prolog
+ints_between(N0, N, List) :-
+        (   N0 < N
+        ->  List = [N0|List1],
+            N1 is N0 + 1,
+            ints_between(N1, N, List1)
+        ;   N0 = N,
+            List = [N]
+        ).
+```
+
+## Higher-Order Predicates
+
+**call/123** is used to execute its argument as a Prolog goal (with remaining inputs as additional args to it).  Thus, you can assign a goal to a Term and evaluate it later. i.e. `Goal = append(X,Y,[a,b]), call(Goal).` equates to `append(X,Y,[a,b]).`
+- Immediate benefit: you can actually see the call as well as the outputs associated, for each combination.
+- This means you can make lists of goals like `[write('pear+')] and then use maplist to run them later.
+
+Currying exploits (which is possible in Prolog):
+- `Curried = append(X,Y), call(Curried,[a,b]).`
+
+**maplist(+Pred, +List)** (Pred curriable) holds if Pred succeeds for all args in List.
+- *maplist(+Pred, ?List1, ?List2)* holds if Pred(L1,L2) holds element-wise (i.e. its not a cartesian mapping but a linear zip).
+- e.g. `maplist(enrolled, [a,c,d],Subjects)` returns any length-3 list such that a studies the first, c the second, etc. This is **map** because the final list (in a column-like nondeterminism) has the outputs of f applied to the respective inputs.
+
+### Solution Predicates
+
+**setof(Template, Goal, List)** outputs List, all variables in Template that satisfy Goal, in canonical order using `@=</2`. 
+- If none satisfy, it fails (NOT an empty list).
+- It can infer variables not in Template through backtracking, e.g. `setof(S, enrolled(Student, S), Subjects).`
+
+**bagof(Template, Goal, List)** is same as setof but doesn't sort or remove duplicates. 
+
+**findall** implicitly existential-quantifies anything not in Template and returns empty lists if no solutions found. 
+
+*Existential quantifying* can be done with `^` in Goals.
+- E.g. `setof(D-T, Subj^class(Subj,D,T), Lectures).` yields all date-times for any subject lecture. 
+- Multiple quantifying possible by `setof(D, [Subj, T]^...)`
+- Compound goals require brackets - `Subj^(enrolled(...), class(...))`
+
+## Term Comparison
+
+Hierarchy: Variables < Numbers < atoms < compound terms.
+- Numbers compared numerically, atoms alphabetically
+- Compound terms are compared by arity, THEN by functor, THEN first arg, etc. 
+- Variables are compared on 'when they were created'. NOTE THAT BINDING SCREWS THIS, I.E. `X @< a, X = b` yields `X = b.`
+- Operators: `@<` `@=<` `@>=` and `@>` (just a `@` in front of numerical comparators)
+
+Use of double goal negation checks for possible unification w/o actually unifying:
+- `\+ \+ X = Y, X=a, Y=b.` checks if X could= Y (true), thus the unifying `X=a, Y=b` occurs.
+
+Use of `==` and `\==` checks if terms, INCLUDING THE VARIABLES, are identical WITHOUT binding AT time of the call/execution (so binding post-use is fine)
+- E.g. `X \== Y, X=Y` says that X was not Y, but is now.
+
+## Type Testing
+
+- `integer(Term), float(Term), number(Term), atom(Term), compound(Term)` all test if Term is bound to their thing AT execution.
+    - So `integer(X), X = 42` fails
+- `atomic(Term)` roughly means `atom(Term) ; number(Term)`
+- `var(Term), nonvar(Term)` and `ground(Term)` test for unbound, non-unbound, and containing zero unbounds respectively.
+
+This allows for mode-sensitive code such as:
+
+```Prolog
+take(N, List, Front) :-
+    (   nonvar(N)
+    ->  length(Front, N),
+        append(Front, _, List)
+    ;   append(Front, _, List),
+        length(Front, N)
+    ).
+```
+
+## IO
+
+Use `write(Term), writeq(Term) and read(Term)` for writing WITHOUT quoting, writing WITH quoting, and reading from current input stream.
+
+Use `get0(Char)` and `put(Char)` for char-by-char read/write. `nl` starts a new line on the current output stream.
+- `get0/1` returns -1 at EOF and 10 at end of line.
+
+Use `see(File)` (open to read), `seen` to close it, `tell(File)` to open for write and `told` to close it. Without this they write to terminal.
+
+
 
 ## Examples
 
@@ -279,6 +374,10 @@ The `meaning' (called semantics) of a logic program is what makes it true. For P
 
 Where rules are used, to extract the semantics, find all possible input combinations and write out a corresponding clause for each.
 
+## Recursion Considerations
+
+If only want/expect one solution, make predicates deterministic (no choicepoints). E.g. no base and recursive cases, just one case. Otherwise, you'll disable LCO.
+
 ## Compilation and Debugging
 
 Use `?- [filename]` to compile (`?-` is the prompt)
@@ -301,7 +400,6 @@ Activate with `trace.`. Uses the Byrd box model: either `call` (entry), `exit` (
 **Unification**: Terms `t` and `u` are unified by substitution `THETA` iff `tTHETA = uTHETA`
 
 # Questions/Random
-- Integers are `50_000_000`????
 - With the append thing, you can't next the append instaed of the BC thing?
 - Apparently these unify and I don't like it: `[a,[]] and [A,B|Rest]` -> Yes `A = a, B = [] and Rest = []`
 - WTF IS 
