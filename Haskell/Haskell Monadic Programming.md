@@ -176,7 +176,15 @@ F.foldMap (\x -> [x]) testTree  -- Converts tree into a list
 
 ## Monads
 
-**Monads** are an extension of Applicative Functors that also allows functions that take normal values and returns contextual values (a bind)
+**Monads** are an extension of Applicative Functors that also allows functions that take normal values and returns contextual values (a bind). *Think of them as a type constructor representing a computation; programmable semicolons*.
+
+*Philosophy*: Interpret monadic functions as returning TWO values:
+- The value of type `t'
+- A description of an operation (e.g. IO)
+- return is just 'do nothing IO'
+- >>= is 'do these things in order'
+
+*Complete haskell programs* have a main function `main :: IO ()`
 
 For review/comparison:
 ```Haskell
@@ -204,7 +212,7 @@ Examples
    Note the absence of the typeclass constraint; but it is still true that Monads are Applicative Functors.
 -}
 class Monad m where
-  return :: a -> m a      -- IDENTICAL purpose to pure
+  return :: a -> m a      -- IDENTICAL purpose to pure; identity function
   (>>=) :: m a -> (a -> m b) -> m b       -- Bind
   (>>) :: m a -> m b -> m b
   x >> y = x >>= \_ -> y
@@ -246,7 +254,7 @@ direction, you read and apply the stream linearly (see below).
 
 ```Haskell
 -- Example
-pred2 = \x -> Just . pred . pred $ x
+pred2 = Just . pred . pred
 negater = \y -> Just $ -y
 
 (pred2 <=< negater) =<< Just 5   -- Just (-7). Read right-left
@@ -279,16 +287,22 @@ Do notation is to streamline monadic notation. The following two are equivalent:
 
 -- With monadic functions. Note that the brackets are un-necessary via precedence.
 foo :: Maybe String
-foo = Just 3 >>= (\x ->
-      Just "!" >>= (\y ->
-      Just (show x ++ y)))
+foo = 
+  Just 3   
+  >>= 
+  \x ->
+  Just "!" 
+  >>= 
+  \y ->
+  Just (show x ++ y)))
 
 -- Prettier version
 foo2 :: Maybe String
 foo2 = do
     x <- Just 3
     y <- Just "!"
-    Just (show x ++ y)
+    let k = "Cool "
+    Just (k ++ show x ++ y)
 ```
 > Note: writing `Nothing` or `_ <- Nothing` in `foo2` would equal a `>> Nothing` in `foo`
 
@@ -389,11 +403,12 @@ Thus to add logging to programs is easy: just wrap outputs in a `do`, use `tell`
 
 ### State Monad
 
-Found in `Control.Monad.State`, defines a State, which implicitly stores a value and some state. Stateful computations (functions that, given a state, compute a value and a new state) are the functions that interact with bind.
+Found in `Control.Monad.State.Lazy`, defines a State, which implicitly stores a value and some state. Stateful computations (functions that, given a state, compute a value and a new state) are the functions that interact with bind.
 
 **TIP**: A state s a is better thought of as a 'unevaluated state' than an actual state object. Will it be a state? Yes. But have you applied the prior state yet? No.
 
 ```Haskell
+-- Idea of implementation
 newtype State s a = State { runState :: s -> (a,s) }  
 
 instance Monad (State s) where  
@@ -403,7 +418,7 @@ instance Monad (State s) where
         (State g) = f a  
     in  g newState 
 
-Idea:  
+Idea behind bind:
 ___________________________________
 | (input) >[H]> (a) >F> ([G])     |
 |             > (state) ----->[G]>| 

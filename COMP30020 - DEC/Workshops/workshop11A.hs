@@ -11,6 +11,9 @@
   interesting experience.
 -}
 
+
+import System.IO
+
 type Animal = String
 type Question = String
 type Answer = String
@@ -25,7 +28,7 @@ data Tree = Finished | Leaf Animal | Decision Question Tree Tree
     deriving (Eq, Show)
 
 -- Constants
-NO = "NO" :: Question
+no = "NO" :: Question
 
 -- Main function
 main :: IO ()
@@ -47,7 +50,7 @@ traverseWithCount (n,tree) =
     Decision q lt rt -> do 
       -- Pose a question, use answer to traverse down
       ans <- question_prompt q
-      if (ans == NO)
+      if (ans == no)
       then do
         (newn,newlt) <- traverseWithCount (n,lt)
         if newlt == Finished 
@@ -60,7 +63,7 @@ traverseWithCount (n,tree) =
         else return (newn, Decision q lt newrt)
     Leaf animal -> do 
       ans <- leaf_prompt animal
-      if (ans == NO)
+      if (ans == no)
       then do
         -- Gets more info from user, updates tree for next round
         new_data <- new_data_prompt animal
@@ -79,13 +82,14 @@ insert conflict (newAnimal, q, newAns) =
   Decision q left right
   where 
     (left, right) = 
-      if (newAns == NO)
+      if (newAns == no)
       then (Leaf newAnimal, conflict)
       else (conflict, Leaf newAnimal) 
 
 -- Prompts user for what they thought of to add to decision tree.
 new_data_prompt :: String -> IO InfoTuple
-  do 
+new_data_prompt prior = do 
+    hFlush stdout
     putStr $ "Sorry! What was your animal?\t"
     animal <- getLine
     putStr $ "Okay - now write a question to\ndiffer it from a " ++ prior ++ ":\t"
@@ -99,6 +103,7 @@ new_data_prompt :: String -> IO InfoTuple
 start_round_prompt :: IO ()
 start_round_prompt = do
   putStr "Think of an animal. Hit return when ready. "
+  hFlush stdout
   getLine
   return ()
 
@@ -116,12 +121,14 @@ end_game_prompt tries =
 question_prompt :: String -> IO String
 question_prompt q =
   do putStr $ "QUESTION > " ++ q ++ "\t"
+     hFlush stdout
      getLine
  
 -- Asks if user has thought of a specific animal, retrieves answer
 leaf_prompt :: String -> IO String
 leaf_prompt animal = 
   do putStr $ "QUESTION > Is it a " ++ animal ++ "?\t"
+     hFlush stdout
      getLine
       
 -- Example hierarchy generated after a game.

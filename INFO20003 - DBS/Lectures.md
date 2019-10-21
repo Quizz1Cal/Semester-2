@@ -775,6 +775,7 @@ IDEA:
         - If rj==sj then add <r,s> to result
 
 **Cost(SNLJ)** = NPages(Outer) + NTuples(Outer)*NPages(Inner)
+**TODO**: Clarify why OUTER specifically.
 
 #### Page-Oriented NLJ (PNLJ, NLJ)
 IDEA:
@@ -960,6 +961,7 @@ The tradeoff:
 
 **Armstrong's Axioms** denote functional dependencies:
 - `A = (X1,X2,...,Xn)` and `B = (Y1,Y2,...,Yn)`
+- **TODO**: How to denote the dependencies with this notation (wasn't in lecture slides)
 - *Reflexivity*: B \subseteq A => A -> B (supersets determine any subsets)
 - *Augmentation*: A -> B => AC -> BC (you can add 'redundant' attrs)
 - *Transitivity*: A -> B, B -> C => A -> C

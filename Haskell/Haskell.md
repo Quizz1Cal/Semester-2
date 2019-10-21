@@ -117,6 +117,8 @@ let { x = ...
 in ...
 ```
 
+One-liner: `do { putStr "Show\n" ; return ()}`
+
 ## Functions
 
 All functions in Haskell take one input and emit one output; anything higher order than this is a **curried function**.
@@ -490,20 +492,42 @@ Note the pattern matching in  `dot xs ys = sum [x*y | (x, y) <- zip xs ys]`
 ## Laziness
 
 To be **lazy** means an expression is only evaluated when results are needed.
+- Opposite to 'eager evaluation' where things are evaluated as soon as bound to a variable.
+- Haskell usually evaluates ONLY when arithmetic needed; pattern matching; or for output
+- Haskell is *call by need*: 'remembers' what will compute the value(s) it lazily ignores with a *suspension* or *promise* (or *thunk*)
+  - As a result, things like `ite(cond, doiftrue, else)` doesn't increase complexity and so any control structure can be user-defined at no cost
 
-To be **non-strict** means that you reduce (apply) operations from the outside in, which can render some code useless/unevaluated; expressions can have a value even if some subexpression don't.
+When it comes to 'pass structures' (pushing outputs of one step into another etc) (assuming linear, immediate passing):
+- Eager: max(memory) = largest_structure + size(previous) (can garbage the rest)
+- Lazy: max(memory) = tree of suspensions from earlier passes (most often <= eager)
 
-Haskell is **non-strict** but not always lazy. For example, pattern matches forces the inspection of an element and hence forces strictness.
+Input: read lazily - only reads as soon as the program needs it
+
+Lazyness:
+- Allows work with conceptually infinite data structures (program will look only at finite slice); e.g. `take n [1..]` and use of takeWhile
+- Parametric poly. -> ALL types need to be representable in same amount of memory (size of pointer), larger types are pointed to
+- Attempt to evaluate lazy values only once; i.e. don't do `p x` and then `x` as this is 'redundant work', it would be better if you could 'save' the first suspension output and use that going forward
+- `min = head . sort` only requires Haskell to find the 1st element of the sorted list
+
+### Performance Impacts
+
+
+#### Strictness
+
+**strict**: All arguments were computed & necessary
+- Haskell is **non-strict** but not always lazy. For example, pattern matches forces the inspection of an element and hence forces strictness. (if you have to inspect, it's probably a strict situation)
 
 The process of determining what to/not to evaluate is computational money - programs should be optimised so that only what is used, is strictly evaluated.
+- **Strictness analysis** can be used to avoid suspensions and instead imperatively calculate where functions are known to be strict.
 
-### Strictness
-
-Whether a value will be evaluated always. If you have to inspect the value, chances are it's strict.
-
-
-
-TODO.
+**Deforestation**: removing intermediary structures in code to speed up computation
+    - E.g. using inbuilts instead of any list comprehensions
+    - E.g. single sweep of a list rather than 3
+    - E.g. `filter_map` to do it in one pass
+- Appending to the end of a list increases in time complexity with length. A **cord** supports efficient addition in declarative prog. (e.g. binary trees)
+  - `data Cord a = Nil | Leaf a | Branch (Cord a) (Cord a)`
+  - Needs tail recursion to actually be more efficient than lists
+- .... tons of other annoying stuff
 
 ## Modules
 
