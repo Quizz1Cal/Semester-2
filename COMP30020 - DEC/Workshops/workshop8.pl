@@ -1,4 +1,3 @@
-
 sumlist(Ns, Sum) :-
     sumlist(Ns, Sum, 0).
 
