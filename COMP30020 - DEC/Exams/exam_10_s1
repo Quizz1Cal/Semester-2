@@ -1,0 +1,36 @@
+# Question 5
+
+data Range = Range Int Int
+    deriving Show
+data Ttree a = Nil | Node3 a (Ttree a) (Ttree a) (Ttree a)
+    deriving Show
+
+-- Suspected typo
+foldr_ttree :: (a -> b -> b) -> b -> Ttree a -> b
+foldr_ttree _ acc Nil = acc
+foldr_ttree f acc (Node3 v l m r) =
+    let acc1 = foldr_ttree f acc l
+        acc2 = foldr_ttree f acc1 m
+        acc3 = foldr_ttree f acc2 r
+    in f v acc3
+
+max_range :: Ttree Range -> Range
+max_range = foldr_ttree best_range (Range maxBound minBound)
+    where 
+        best_range (Range l r) (Range bl br) =
+            Range (min l bl) (max r br)
+
+test =  Node3 (Range 1 10) 
+            (Node3 (Range 2 15) Nil Nil Nil)
+            (Node3 (Range (-11) 100) Nil Nil Nil) 
+            (Node3 (Range (-12) 19) Nil Nil (Node3 (Range 1 101) Nil Nil Nil))
+
+insert_range :: Ttree Range -> Range -> Ttree Range
+insert_range Nil r = Node3 r Nil Nil Nil
+insert_range (Node3 range0@(Range l0 r0) l m r) range1@(Range l1 r1) 
+  | r1 <= l0 = Node3 range0 (insert_range l range1) m r
+  | r0 <= l1 = Node3 range0 l m (insert_range r range1)
+  | otherwise = Node3 range0 l (insert_range m range1) r
+
+max_range (Node3 x l m r) = 
+    -- If in left, 

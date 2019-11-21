@@ -1,0 +1,75 @@
+# Question 1
+a. (+3) :: Num a => a -> a
+b. foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b REMEMBER
+c. return :: Monad m => a -> m a REVIEW
+d. filter (\x -> True) [2] :: Num a => [a] REMEMBER
+e. [Nothing] ++ [Nothing] :: [Maybe a] Corr.
+f. [Just Just] :: [Maybe (a -> Maybe a)]
+
+# Question 2
+a. A=1, B=2, C=3
+b. A=3, B = g(3)
+c. Fail, A =1 and A = g(3)
+d. A=B=1, C=g(3)
+
+# Question 3
+a. Haskell reuses more than C programs in the following ways:
+- 1. More prevalent use of recursive, higher-order functions (e.g. foldr)
+- 2. Decomposes iteration into recursion - this by definition, reuses function calls
+- 3. Has 'class'/'typeclass' polymorphism (e.g. monads, Enums)
+
+LEARNT: PATTERN MATCH
+
+b. Haskell has 'more complicated' iteration, requiring a recursive thought process, cannot be thought 'logically'
+
+# Question 4
+a.
+# Haskell
+flatten (Num d) n = (([Eqn 0 Plus (Num d) (Num 0.0)], Var 0), 1)
+flatten (Var i) n = (([], Var i), i+1)
+flatten (BinopExpr Binop exprL exprR) n = 
+    let ((eqnL, L1), L2) = flatten expr1 n
+        ((eqnR, R1), R2) = flatten expr2 L2
+    in (((Eqn R2 Binop L1 R1):(eqnL ++ eqnR), R2), R2+1)
+
+b. Allows for easier pattern matching
+c. Coheres better with state monad coding (interpret (Eqn, Expr) as the output and Int the state)
+d. 
+% flatten (+expr, +int, -list(eqn), -expr, -int)
+e. ...?
+f. ...
+
+# Question 5
+a. In general, representations should be stricter. Less strict representations could allow inappropriate
+operations (e.g. int + char). Enforcing strictness allows well typed languages like Haskell to then detect
+erroneous operations like the example.
+If generality is deemed necessary, then peel back the strict representation.
+
+b. what?
+
+# Question 6
+a. 
+-- Haskell
+c_len :: Cord a -> Int
+c_len Nil = 0
+c_len (Leaf _) = 1
+c_len (Branch c1 c2) = c_len c1 + c_len c2
+
+b. 
+c_foldr :: (a -> b -> b) -> b -> Cord a -> b
+c_foldr _ acc Nil = acc
+c_foldr f acc (Leaf a) = f a acc
+c_foldr f acc (Branch c1 c2) = 
+    let acc' = c_foldr f acc c1
+    in c_foldr f acc' c2
+
+c.
+IT's thE SAME......?
+
+d. 
+cord_to_list c = cl_foldr (\x xs -> xs ++ [x]) [] c
+
+-- May also be cl_foldr (:) [] c
+
+
+

@@ -601,6 +601,8 @@ GROUP BY boss.employeeid
 HAVING COUNT(emp.employeeid) > 2;
 ```
 
+**ALL, ANY**: Basically allows `WHERE sal > ALL(200,300,400)` rather than `where sal > 200 AND sal > 300 AND sal > 400`, similar for ANY
+
 ### Datatypes
 
 - `VARCHAR(n)` occupies up to n length. It is dynamic
@@ -1123,7 +1125,253 @@ Transactions ideally are serializable (appear serial in execution, but allows co
 **DO THE TRANSACTION DEMONSTRATION**
 
 ## Data Warehousing
-## Other DBMS
+
+**Informational Database**: A single database that allows *all* organisations' data to be stored in a form that can be used to support organisational decision processes.
+
+**Data Warehouse**: Single repo. of organisational data:
+
+Basic features:
+- TERABYTES of data
+- Integrates data from multiple sources (Extracts from source systems, transforms loads)
+- Makes it available to managers/users
+- Supports analysis and decision making
+
+Characteristics of a dW:
+- Subject oriented: organised a/b particular subjects e.g. sales, customers
+- Validated, Integrated data: Data converted to a COMMON FORMAT and then VALIDATED before storing in DW
+- Time variant: COntains HISTORICAL data, allows TREND ANALYSIS, and is basically a series of SNAPSHOTS that are time-stamped
+- Non-volatile: Users have READ ACCESS ONLY = updates done automatically by ETL process and periodically by DBA
+
+**DW Supports Analytical Queries** such as :
+- How many, average, total (numerical/fact aggregations)
+- By state by cust. type ... (these are called *dimensions*)
+
+Example architecture:
+- Source systems 
+    - Internal
+    - External
+- Data Staging Area
+    - Processing e.g. clean, derive, amtch, combine...
+- Data & Metadata Storage Area
+- Analytics & Reporting
+    - querying, dashboards etc.
+
+**Star Schema Design (aka dimensional modelling)**: Consists of 
+- Fact table:  
+    - Contains actual business MEASURES (additive, aggregates) called facts. 
+    - Also has FOREIGN KEYs pointing to DIMENSIONS
+    - E.g. a 'Sale' fact table has 'time, store, customer' KEYS and 'dollar sales, unit sales' FACTS (AGGREGATED)
+- Several dimensional tables:  
+    - Consists of a KEY and potentially a hierarchy of categories
+        - E.g. 'Product key, product name, product type'. The first is the KEY, then type is broad cat, name a sub-cat.
+        - Hierarchy is BOTTOM to TOP
+- (sometimes) hierarchies in dimensions
+- E.G. ITS A SIMPLE, RESTRICTED ER MODEL
+
+The *star schema* model has a Fact in the CENTRE, and the dimension TABLES (also fact tables) connected to it.
+- Relationships b/t fact and dimension is (1:m) to (1:1)
+
+**Designing a DM**:
+1. Choose a business process (e.g. sales)
+2. Choose measured facts (e.g. quantity, price)
+3. Choose granularity (e.g. # categories)
+4. Choose dimensions (the categories)
+5. Complete dimensional tables
+
+*Technically*, a dimensional table has *embedded hierarchies*: categories like industry group, class sector in a way are ANOTHER hierarchy of dimensions. 
+- In such a drawing (each box is a RECTANGLE Btw), typically a (1:1) and (0:m) relation (all customers have one industry class, not all industry classes may have a customer, but can have many)
+- This causes a "snowflake schema": a fact has dimensions, which themselves have embedded hierarchies.
+
+**Normalisation**:
+- Eliminates redundancy, improves efficiency, helps referential integrity
+-
+**Denormalisation**:
+- Fewer tables (fewer joins), faster, and tuned for end-user analysis
+
+## Distributed Databases
+
+**Distributed Database**: Single, logical database PHYSICALLY spread a/c MANY computers, MANU locations, connected by a data comm link
+    - But APPEARS to USERS as one database
+
+**Decentralized Database**: Collection of indept databases NOT networked together as one logical db.
+    - APPEARS to USERS as many databases
+
+**Advantages of Distributed DBMS**:
+- Good fit for geo. distributed orgs/users (utilize Internet)
+- Data located near site with greatest demand (e.g. sporting)
+- Faster data access to LOCAL data
+- Faster data processing (workload SHARED)
+- Allows MODULAR growth (horizontal scaling ... more servers)
+- Increased reliability/availability (less danger of SINGLE point of failure (SPOF))
+- Supports database recovery (replicated a/c multiple sites)
+
+**Disadvantages of Distributed DBMS**:
+- Complexity of mgmt, control (stitching, version control, who updates, how web understands all this)
+- Data integrity (improper updating, who 'wins' if two updates occur) .. solved by Transaction manager, Master-slave design
+- Security (higher chance of breaches due to more sites) ... lots of infrastructure
+- Standards (different vendors use diff protocols)
+- Training/maintenance costs (complex infrastructure; disks + fast + clustering = $$$)
+- Storage req. (replication model)
+
+**Objectives of Distributed DBMS**:
+- Location transparency: 
+    - geo location IRREl. to program/user
+    - Requests are forwarded by system to site(s) relevant
+    - Data appears as SINGLE logical database at one site to any user
+    - Queries can join data from tables in many sites
+- Local autonomy: 
+    - Nodes can function locally if network connxn lost, allowing for local security, data control, transaction logs
+    - Can RECOVER from local failures
+    - Provide full access to LOCAL data
+- Trade-offs:
+    - availability vs consistency
+    - Synchronous vs Asynchronous updates
+    - CAP theorem (see NoSQL)
+
+**Distribution Options**:
+- Data replication: data copied a/c sites
+    - Advantages:
+        - High reliability (due to copies)
+        - Fast access
+        - Avoid complicated integrity routines (just refresh @ scheduled intervals)
+        - Decoupling aok
+        - Reduced traffic... if delay updates
+        - POPULAR
+    - Disadvantage:
+        - More storage
+        - Data Integrity ... be careful a/b out-of-date data, performance impacted for busy nodes, and incorr. retrieval could occur
+        - Takes time for updates
+            - Lots of back/forth commxn
+        - Network communication capabilities
+            - High demand on telecomms
+            - Costs$$$$$$
+    - THEREFORE better for non-volatile, read-only data
+    - Synchronous updating:
+        - Continuously maintained; updates spread to all databases OR is aborted (it has to update everywhere)
+        - Ensures data integrity, minimise complexity of knowing where 'recent' is
+        - = SLOW, high usage of networks
+    - Asynchronous updating:
+        - There is DELAY in propagating updates to remote dbs (with some degree of temporary inconsistency allowed)
+        - Acceptable time (updates locally, replicas synchronized in BATCHES at intervals)
+        - More complex to plan/design to 'get the level right'
+        - Suits some things more than others (e.g. commerce vs social media)
+- Horizontal partitioning: Table rows distributed b/t sites
+- Vertical partitioning: Columns distributed b/t sites
+    - Can split based on a dimension/feature (e.g. city), choice is yours really
+    - Advantages for BOTH:
+        - Efficient: stored near use point
+        - Performance: local optimization for access
+        - Security: Only relevant data is local
+        - Ease: Unions a/c partitions are easy
+    - Disadvantages for BOTH:
+        - Inconsistent speed: due to accessing ALL partitions
+        - SPOF: No data replication
+    - Relative pro of Horizontal:
+        - Combining data is harder for vert. due to joins instead of unions
+    - SAME ADV
+- Centralised: all in one place
+
+REFER TO THE GREAT SLIDE 26 IN THE LECTURE
+
+## NoSQL
+
+**Pros of Relational DB**:
+- Simple
+- Can integrate multiple appxns (via shared data store)
+- Standard interface SQL
+- Ad-hoc queries, across/within aggregates
+- Fast, reliable, concurrent, consistent
+
+**Cons of Relational DB**:
+- Object relational impedance mismatch (doesn't have encapsulation, abstraction/inheritance, accessibility)
+- Bad with BIG DATA
+- Bad with CLUSTERED/replicated servers
+
+**Big Data**: Data that exists in VERY LARGE VOLUMES and many different VARIETIES (types) that needs processing at high speed (e.g. mobile sensors, web clicks)
+- **3 V's**: Volume, variety, velocity, are what make it big
+
+Characteristics of Big Data:
+- **Schema on Read**:  data model determined LATER, capture and store now and worry a/b that later. 
+    - RDBS are Schema on Write, requires a pre-existent model
+- **Data Lake**: Large integrated repo for internal/external data not following a predefined schema; captures ALL, dive anywhere, flexible
+
+Approach outline:
+- Traditional (SoW): Gather requirements ; formally model ; schema ; use database based on schema
+- Big Data (SoR): Collect with local structures (XML, JSON) ; store in data lake ; analyse lake for meaningful structure; structure in analysis process
+
+**NoSQL Database**: 
+- NOT relational OR SQL
+- Runs well on distributed servers
+- Most are open-source
+- Built for modern web
+- Schema-less (implicit is possible)
+- Supports SoR
+- NOT ACID compliant
+- EVENTUALLY consistent
+
+Goals of NoSQL:
+- Improve programmer productivity (OR mismatch)
+- Handle larger data volumes and thoroughput (big data)
+
+Types of NoSQL:
+- Graph; key-value; document; column-family
+- Key-value stores (K-V stores):
+    - Key = PRIMARY Key
+    - Value = Anything (#, array, json, img) ; up to appxn, no meaning otherwise
+    - Operations are Put, Get and Update
+    - Uses: If you need 'everything' in one place
+        - Storing web session info (store in a single step; fast, all in one object)
+        - User Profiles
+        - Shopping Cart Data
+    - Don't Use:
+        - Relationships b/ data
+        - Multi-operation transactions (e.g. involving many K)
+        - Query by Data, that req. viewing data to get keys
+        - Operations by Key Sets (can't; operations limited to ONE key at a time)
+- Document: SOMEWHAT CONFUSING
+    - *Document*: Self-describing pieces of data
+        - E.g. hierarchical trees, nested maps, collections, scalars, XML, JSON
+    - Documents should be 'similar' (schema can differ though)
+    - Basically, it's K-V but the document (the value) is detailed and strutured to allow element manipulation
+    - E.g. in Mongo, JSON documents are in a collection (table), with a unique id (in that collection); these collections form a dbs (schema)
+    - `db._collection_.find({type: 'snacks', age: {$gt:18}}).sort({age:1})` - There's also `db._collxn_.insert()` and `.update({criteria}, {$set: {qty:10}})` (which is a modifier), and `upsert:true` will make a new doco if nothing matches
+- Column families:
+    - Columns rather than rows stored together on disk as 'families' (often related somehow)
+    - FASTER ANALYSIS (less is fetched) (like auto vertical partitioning)
+    - SUITABLE FOR LARGE DATA/QUERY THOROUGHPUT
+    - Can see as sparse tables OR multiD. (nested) maps
+    - Data distribution is via row key (as normal)
+    - E.g. Cassandra, uses CQL
+- Graph:
+    - Stores entities and their relationships which could be modelled in a graph i.e. node-and-arc network (e.g. friendship graphs)
+    - Deduce knowledge from the graph
+    - SUPER FAST to answer 'extended friends' compared to RDBMS (for large requests)
+    - Types of graphs:
+        - **Single-relational**: Edges are homogenous (same meaning, associative)
+        - **Multi-relational (property)**: Edges are typed/labelled (directional and can differ), e.g. friend vs colleague, vertices and edges maintain a set of K-V pairs
+            - Use when non-graphical data (e.g. properties) important, e.g. name or weight of edge
+    - Different types of relationships b/t nodes is ok, limitless # and kind
+    - All relationships have a TYPE, START NODE, END NODE, and PROPERTIES
+
+**Aggregate-oriented DBS**: Includes K-V, document, column-family.
+- ENTIRE aggregate of data is stored together (no transactions)
+- Efficient storage on clustered/distributed databases
+- BUT hard to analysis a/c subfields (e.g. summing over products, a subfield of order)
+
+## Further NoSQL
+
+**CAP Theorem**: AKA Brewer's Theorem, says only two of the three below are possible:
+- **Consistency**: Readers post-update in a Dist. system (with replication) see the same data.
+- **Availability**: Working nodes (servers) can read and write data.
+- **Partition Tolerance**: System can operate even if two sets of servers become isolated (e.g. a partition of the entire server network occurs)
+
+**Fowler's Version of CAP Theorem**: Given a distributed dbs, when a partition occurs, one must choose b/t consistency and availability.
+
+**ACID vs BASE**:
+- BA = Basically available - the system guarantees availability but can be inconsistent or changing.
+- S = Soft state - The state COULD change over time even during times without input (due to 'eventual consistency')
+- E = 'Eventual Consistency' - The system will EVENTUALLY become consistent once it stops receiving input. Then the data will propagate where it needs to. The system cannot do this until all inputs are processed/silent, and it cannot check consistency of every transaction.
+- This is a model of availability OVER consistency, whereas ACID is more concerned with consistency.
 
 # Questions
 - Clarify the elements of the tables on slide 20; what is data, information, metadata?

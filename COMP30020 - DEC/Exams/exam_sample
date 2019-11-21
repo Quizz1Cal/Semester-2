@@ -1,0 +1,94 @@
+# Sample exam, 2017 ex 2
+
+# Question 1
+ALL TICK
+a. (<) :: Ord a => a -> a -> Bool
+b. map :: Num a => [a] -> [a]
+c. foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+d. Nothing :: Maybe a
+e. zip [True, True, False] :: [a] -> [(Bool, a)]
+f. flip filter "hello" :: (Char -> Bool) -> [Char]
+
+LEARNT: FOLDABLE OPTIONAL
+
+# Question 2
+a. Fails: length will try to take (<) as an argument, but it expects a list.
+(TYPE ERROR)
+b. [1,2]
+c. 3 (lazy evaluation)
+d. "abd"
+e. (0,0)
+f. [3,1,2,4]
+
+LEARNT: Tuples are compared on each feature. SAY "TYPE ERROR"
+
+LEARNT: If you think you're going to fold, 
+define a FOLDER, then the FOLDING_FUNCTION;
+don't 
+
+# Question 3
+-- Only needed minor spell-check/touchups
+data Ttree t = Nil | Node3 t (Ttree t) (Ttree t) (Ttree t)
+
+average_Ttree :: Ttree Double -> Double
+average_Ttree tree = 
+    let (count, total) = average_Ttree' (0, 0.0) tree
+    in if (count < 1) 
+       then 0.0
+       else total / fromIntegral count
+
+-- Helper function
+average_Ttree' :: (Int, Double) -> Ttree Double -> (Int, Double)
+average_Ttree' acc Nil = acc 
+average_Ttree' acc@(count, total) (Node3 val l m r) = 
+    let acc_l = average_Ttree' acc l
+        acc_m = average_Ttree' acc_l m
+        (tree_count, tree_total) = average_Ttree' acc_m r
+    in (tree_count + 1, tree_total + val)
+
+LEARNT:
+- It's okay to capture for 'Nil' in both helper and the original (avoids ite)
+- Abstracted plusCount in solns and passed it in a 'folding' fashion
+
+
+# Question 4
+
+The ground unit clauses:
+p(a), p(b), q(a,a), q(a,b), q(b,a), q(b,b), r(a,c), r(d,b),
+s(a, b).
+
+LEARNT: Write ALL with fullstops, NO COMMAS.
+
+# Question 5
+% Prolog
+% intset_insert(+N, +Set0, ?Set)
+intset_insert(N, empty, tree(empty, N, empty)).
+intset_insert(N, tree(L0, M, R0), tree(L1, M, R1)) :-
+    (  N < M 
+    -> R0=R1, intset_insert(N, L0, L1)
+    ;  ( N > M
+       -> L0 = L1, intset_insert(N, R0, R1)
+       ; M = N, L0=L1, R0=R1
+       )
+    ).
+
+LEARNT: Don't forget the DOT.
+LEARNT: Can Do
+    (  N = M
+    -> ...
+    ;  N < M
+    -> ...,
+       ...
+    ;  ...,
+       ...
+    )
+
+# Question 6
+sumlist(List, Sum) :- sumlist(List, 0, Sum).
+sumlist([], Sum, Sum). # WHOOPS
+sumlist([N|Ns], Sum0, Sum) :-
+    Sum1 is Sum0 + N,
+    sumlist(Ns, Sum1, Sum).
+
+LEARNT: 
+- DONT FORGET ABOUT BASE CASES, EVEN WHEN FILLING IN

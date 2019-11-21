@@ -1,0 +1,34 @@
+|=== LOG FOR Log 2019-09-10 -- 13-31-35 ===|
+Completed in 135.32 seconds.
+No errors were encountered!
+
+Total Runs: 500 | None | Guesses: Min 1.0 - Avg 3.61 - Max 5.0  ||  Max Time 3.12  ||  Quality: Min 95.63 - Avg 99.84
+
+Your distribution of Guesses:
+1.0      1
+2.0     13
+3.0    184
+4.0    284
+5.0     18
+Name: Guesses, dtype: int64
+
+Your worst measurements:
+       Answer  Guesses  Quality  TimeTaken
+6    [AH, 7S]      5.0    95.63       0.26
+466  [7S, AH]      5.0    95.63       0.26
+454  [8C, 3S]      5.0    95.63       0.26
+365  [9C, 2D]      5.0    95.63       0.26
+329  [2S, JC]      5.0    95.63       0.25
+317  [TC, 3S]      5.0    95.63       0.24
+293  [2D, 9C]      5.0    95.63       0.26
+190  [AC, 7S]      5.0    95.63       0.27
+189  [AH, 2S]      5.0    95.63       0.29
+184  [2H, AD]      5.0    95.63       0.28
+118  [9C, 3S]      5.0    95.63       0.26
+79   [QD, JH]      5.0    95.63       0.27
+74   [2S, QC]      5.0    95.63       0.26
+44   [2H, AD]      5.0    95.63       0.26
+30   [2H, 3C]      5.0    95.63       0.23
+11   [8S, QC]      5.0    95.63       0.26
+467  [2S, QC]      5.0    95.63       0.27
+484  [7S, 9C]      5.0    95.63       0.25

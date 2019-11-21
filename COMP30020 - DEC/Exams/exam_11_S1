@@ -1,0 +1,62 @@
+# Question 6!
+
+data Var = VarName String
+    deriving (Eq, Ord, Read, Show)
+data FSym = FSym String
+    deriving (Eq, Ord, Read, Show)
+data Term
+    = TermVar Var
+    | TermNum Int
+    | TermFSym FSym [Term]
+    deriving (Eq, Ord, Read, Show) 
+
+base_indent = "    " :: String
+
+print_indented :: String -> Int -> IO ()
+print_indented str n = 
+    do
+        let indent = concat $ replicate n base_indent
+        putStrLn $ indent ++ str
+
+print_term :: Term -> IO ()
+print_term f = print_term' f 0
+
+print_term' :: Term -> Int -> IO ()
+print_term' (TermVar (VarName x)) n = print_indented x n
+print_term' (TermNum x) n = print_indented (show x) n
+print_term' (TermFSym (FSym func) ts) n =
+    do
+        print_indented func n
+        sequence_ $ map (flip print_term' (n+1)) ts
+
+test =  TermFSym (FSym "f") [TermVar (VarName "X"), TermFSym (FSym "g") [TermVar (VarName "Y"), TermNum 5]]
+
+
+# Question 7
+
+data Heap a = Empty | Node a (Heap a) (Heap a)
+    deriving Show
+
+remove_biggest :: (Ord a) => Heap a -> (a, Heap a)
+remove_biggest (Node v Empty r) = (v, r)
+remove_biggest (Node v l Empty) = (v, l)
+remove_biggest (Node v l r) = 
+    let (val_l, l') = remove_biggest l
+        (val_r, r') = remove_biggest r
+    in if val_l < val_r 
+       then (v, Node val_r l r')
+       else (v, Node val_l l' r)
+
+test = Node 7 
+    (Node 5 
+        (Node 1 Empty Empty) 
+        (Node 3 Empty Empty))
+    (Node 6 
+        (Node 4 Empty Empty) 
+        (Node 2 Empty Empty)
+    )
+
+b.
+
+
+

@@ -131,7 +131,7 @@ Rules are typically added by writing them in a text file (for example rules.pl),
 
 ## Terms (Data)
 
-**Terms** are data structures, of the atomic, compound of variable variety. (Datalog doesn't have compound).
+**Terms** are data structures, of the atomic, compound or variable variety. (Datalog doesn't have compound).
 - Atomic terms: Floats, Integers and atoms
 - Integers can be written with `_`; these are ignored, are only for readability.
 

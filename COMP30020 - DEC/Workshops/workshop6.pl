@@ -13,6 +13,10 @@
 :- ensure_loaded(countries).
 :- ensure_loaded(rivers).
 
+win(r,s).
+win(s,p).
+win(p,r).
+
 % What borders Australia. TYPE INTO
 :- borders(australia,X), borders(X, australia).
 

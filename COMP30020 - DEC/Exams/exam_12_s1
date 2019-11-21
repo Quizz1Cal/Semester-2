@@ -1,0 +1,90 @@
+# 2012 Exam S1
+
+a. filter :: (a -> Bool) -> [a] -> [a]
+b. (+) :: Num a => a -> a -> a
+c. [1,2,3]
+d. [[2]]
+e. [4,1,2] ###
+f. 2 (lazy eval)
+
+2 SKIP
+
+3.
+
+LEARNT: Revise structure of case, ife, etc.
+LEARNT: Revise whitespacing
+
+data Stmt
+  =  Assign Var Expr
+  |  ITE Expr [Stmt] [Stmt]
+  |  While Expr [Stmt]
+
+num_ass :: [Stmt] -> Int
+num_ass [] = 0
+num_ass (s:ss) = 
+    num_ass ss + get_ass s
+    where 
+        get_ass stmt = 
+            case stmt of 
+                (Assign _ _) 
+                    -> 1
+                (ITE _ stmts1 stmts2) 
+                    -> num_ass stmts1 + num_ass stmts2
+                (While _ stmts) 
+                    -> num_ass stmts
+
+4.
+a. :- is 'if' or 'is a consequence if' ; ',' is 'and', ';' is 'or'
+b. ??????
+
+5. 
+a. C; super easy
+   Haskell: less easy (structure is common and so recognisable)
+   Prolog: similar to Haskell (ite recursive structure)
+
+b. Haskell efficient due to lazy evaluation - the definition is tail-recursive
+and so allows for LCO -- linear evaluation worst-case with constant stack use.
+
+(NO IDEA FOR PROLOG, PRESUME STILL LCO)
+
+C ONLY USE ONE STACK FRAME. ... due to iterative nature.
+
+c. MAYBE MEMORY.
+
+6.
+
+LEARNT: It's always simpler. ALSO second can be done with a fold.
+
+data Btree a = Nil | Bnode a (Btree a) (Btree a) deriving Show
+data Gtree a = Gnode a [Gtree a] deriving Show
+
+btree_gtrees :: Btree a -> [Gtree a]
+btree_gtrees Nil = []
+btree_gtrees (Bnode val l r) = 
+  Gnode val (btree_gtrees l) : btree_gtrees r
+
+test = Bnode 'a' (Bnode 'b' Nil (Bnode 'c' (Bnode 'e' Nil (Bnode 'f' Nil Nil)) (Bnode 'd' Nil Nil))) Nil
+
+b. 
+Expected structure for a function over a btree is either:
+- apply f, traverse l, traverse r (left-order)
+- traverse l, apply f, traverse r (in-order)
+- traverse, then apply f (right-order)
+
+The code does, or could not follow this as it is breadth-reliant....?
+
+c. 
+gtrees_btree :: [Gtree a] -> Btree a
+gtrees_btree [] = Nil
+gtrees_btree ((Gnode val children):gs) =
+    Bnode val (gtrees_btree children) (gtrees_btree gs)
+
+test2 = [Gnode 'a' [Gnode 'b' [],Gnode 'c' [Gnode 'e' [],Gnode 'f' []],Gnode 'd' []]]
+
+d.
+Expected is map sub_func the_list or 
+foldr folder acc the_list
+..?
+
+
+
